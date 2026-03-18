@@ -373,22 +373,24 @@ function LocalesTab({ locales, setLocales }) {
   );
 }
 
+// Auth simple
+const AUTH_USER = "thomasroses99@mail.com";
+const AUTH_PASS = "Marcelo52";
+const SESSION_KEY = "ce-session";
+
 // ===================== LOGIN =====================
-function LoginScreen() {
+function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState("");
   const [pass, setPass]   = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const login = async () => {
-    if (!email || !pass) return;
-    setLoading(true); setError("");
-    try {
-      const fb = await import("./firebase.js");
-      await fb.signInWithEmailAndPassword(fb.auth, email, pass);
-    } catch {
+  const login = () => {
+    if (email === AUTH_USER && pass === AUTH_PASS) {
+      localStorage.setItem(SESSION_KEY, "1");
+      onLogin();
+    } else {
       setError("Email o contraseña incorrectos.");
-    } finally { setLoading(false); }
+    }
   };
 
   return (
@@ -410,9 +412,8 @@ function LoginScreen() {
             style={{ width:"100%", padding:"10px 12px", border:"1px solid #ddd", borderRadius:"7px", fontSize:"13px", outline:"none" }} />
         </div>
         {error && <div style={{ background:"#fdecea", color:"#c0392b", borderRadius:"7px", padding:"8px 12px", fontSize:"11px", marginBottom:"14px", textAlign:"center" }}>{error}</div>}
-        <button onClick={login} disabled={loading}
-          style={{ width:"100%", background:"#1a5276", color:"#fff", border:"none", borderRadius:"7px", padding:"11px", fontSize:"13px", fontWeight:"700", cursor:"pointer" }}>
-          {loading ? "Ingresando..." : "Ingresar"}
+        <button onClick={login} style={{ width:"100%", background:"#1a5276", color:"#fff", border:"none", borderRadius:"7px", padding:"11px", fontSize:"13px", fontWeight:"700", cursor:"pointer" }}>
+          Ingresar
         </button>
       </div>
     </div>
@@ -427,20 +428,10 @@ const INITIAL_LOCALES = [
 
 export default function App() {
   const [fbOk, setFbOk] = useState(null);
-  const [user, setUser] = useState(undefined);
+  const [loggedIn, setLoggedIn] = useState(() => localStorage.getItem(SESSION_KEY) === "1");
   useEffect(() => { onFbConnected = setFbOk; }, []);
-  useEffect(() => {
-    import("./firebase.js").then(fb => {
-      fb.onAuthStateChanged(fb.auth, u => setUser(u ?? null));
-    });
-  }, []);
 
-  if (user === undefined) return (
-    <div style={{ minHeight:"100vh", background:"#16213e", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ color:"#9ab", fontSize:"12px" }}>⏳ Cargando...</div>
-    </div>
-  );
-  if (!user) return <LoginScreen />;
+  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
 
   const [locales,   setLocales]   = usePersisted("ce-locales",  INITIAL_LOCALES);
   const [insumos,   setInsumos]   = usePersisted("ce-insumos",  []);
@@ -487,8 +478,8 @@ export default function App() {
 
         <div style={{marginTop:"auto",borderTop:"1px solid #ffffff10",padding:"12px 14px"}}>
           <div style={{fontSize:"9px",color:"#446",fontWeight:"700",letterSpacing:"1px",marginBottom:"6px"}}>SESIÓN</div>
-          <div style={{fontSize:"10px",color:"#667",marginBottom:"8px",wordBreak:"break-all"}}>{user?.email}</div>
-          <button onClick={()=>import("./firebase.js").then(fb=>fb.signOut(fb.auth))}
+          <div style={{fontSize:"10px",color:"#667",marginBottom:"8px",wordBreak:"break-all"}}>{AUTH_USER}</div>
+          <button onClick={() => { localStorage.removeItem(SESSION_KEY); setLoggedIn(false); }}
             style={{width:"100%",background:"transparent",border:"1px solid #334",borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"10px",color:"#889",textAlign:"left"}}>
             ↩ Cerrar sesión
           </button>
