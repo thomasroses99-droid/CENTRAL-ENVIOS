@@ -428,22 +428,32 @@ function LoginScreen({ onLogin }) {
 
   const [loading, setLoading] = useState(false);
   const login = async () => {
-    if (!email || !pass) return;
+    const em = email.trim().toLowerCase();
+    const pw = pass.trim();
+    if (!em || !pw) return;
     setLoading(true); setError("");
-    if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ email, isAdmin: true }));
-      onLogin({ email, isAdmin: true }); setLoading(false); return;
+    if (em === ADMIN_EMAIL && pw === ADMIN_PASS) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ email: em, isAdmin: true }));
+      onLogin({ email: em, isAdmin: true }); setLoading(false); return;
     }
+    // Primero buscar en localStorage (mismo dispositivo)
+    const localUsers = (() => { try { return JSON.parse(localStorage.getItem("ce-users") || "[]"); } catch { return []; } })();
+    const localFound = localUsers.find(u => u.email.trim().toLowerCase() === em && u.password.trim() === pw);
+    if (localFound) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ email: em, isAdmin: false }));
+      onLogin({ email: em, isAdmin: false }); setLoading(false); return;
+    }
+    // Si no está en localStorage, buscar en Firebase (otro dispositivo)
     try {
       const fb = await import("./firebase.js");
       const snap = await fb.getDoc(fb.doc(fb.db, "central", "main"));
       const users = snap.exists() && snap.data()["ce-users"] ? JSON.parse(snap.data()["ce-users"]) : [];
-      const found = users.find(u => u.email === email && u.password === pass);
+      const found = users.find(u => u.email.trim().toLowerCase() === em && u.password.trim() === pw);
       if (found) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify({ email, isAdmin: false }));
-        onLogin({ email, isAdmin: false });
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ email: em, isAdmin: false }));
+        onLogin({ email: em, isAdmin: false });
       } else { setError("Email o contraseña incorrectos."); }
-    } catch { setError("Error de conexión. Intentá de nuevo."); }
+    } catch (err) { setError("Error: " + (err?.message || "no se pudo conectar")); }
     setLoading(false);
   };
 
