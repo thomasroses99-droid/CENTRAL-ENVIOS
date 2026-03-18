@@ -373,9 +373,51 @@ function LocalesTab({ locales, setLocales }) {
   );
 }
 
+// ===================== USUARIOS =====================
+function UsuariosTab({ usuarios, setUsuarios }) {
+  const [form, setForm] = useState({ nombre:"", email:"", password:"" });
+  const [error, setError] = useState("");
+  const add = () => {
+    if (!form.nombre || !form.email || !form.password) { setError("Completá todos los campos."); return; }
+    if (usuarios.find(u => u.email === form.email)) { setError("Ese email ya existe."); return; }
+    setUsuarios([...usuarios, { id: Date.now(), ...form }]);
+    setForm({ nombre:"", email:"", password:"" }); setError("");
+  };
+  const del = id => { if (window.confirm("¿Eliminar este usuario?")) setUsuarios(usuarios.filter(u => u.id !== id)); };
+  return (
+    <div style={{ maxWidth:"700px", margin:"0 auto", padding:"24px" }}>
+      <h2 style={{ margin:"0 0 20px", color:"#1a2e1a" }}>Gestión de usuarios</h2>
+      <div style={S.card}>
+        <div style={{ fontWeight:"700", fontSize:"13px", marginBottom:"12px" }}>Agregar usuario</div>
+        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+          <input placeholder="Nombre" value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} style={{...S.inp,flex:"1 1 130px"}} />
+          <input type="email" placeholder="Email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} style={{...S.inp,flex:"1 1 180px"}} />
+          <input type="password" placeholder="Contraseña" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} style={{...S.inp,flex:"1 1 130px"}} />
+          <button onClick={add} style={S.btn()}>+ Agregar</button>
+        </div>
+        {error && <div style={{color:"#c0392b",fontSize:"11px",marginTop:"8px"}}>{error}</div>}
+      </div>
+      <div style={S.card}>
+        <div style={{ fontWeight:"700", fontSize:"13px", marginBottom:"12px" }}>Usuarios con acceso</div>
+        <div style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid #eee", alignItems:"center" }}>
+          <div><div style={{fontWeight:"700",fontSize:"13px"}}>Thomas (admin)</div><div style={{fontSize:"11px",color:"#888"}}>{ADMIN_EMAIL}</div></div>
+          <span style={{background:"#e8f5e9",color:"#1a7a3a",fontSize:"10px",fontWeight:"700",padding:"2px 8px",borderRadius:"4px"}}>Admin</span>
+        </div>
+        {usuarios.length === 0 && <div style={{color:"#aaa",fontSize:"13px",padding:"12px 0"}}>No hay usuarios extra todavía.</div>}
+        {usuarios.map(u => (
+          <div key={u.id} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid #f0f0f0", alignItems:"center" }}>
+            <div><div style={{fontWeight:"600",fontSize:"13px"}}>{u.nombre}</div><div style={{fontSize:"11px",color:"#888"}}>{u.email}</div></div>
+            <button onClick={()=>del(u.id)} style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:"16px"}}>×</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Auth simple
-const AUTH_USER = "thomasroses99@mail.com";
-const AUTH_PASS = "Marcelo52";
+const ADMIN_EMAIL = "thomasroses99@gmail.com";
+const ADMIN_PASS  = "Marcelo52";
 const SESSION_KEY = "ce-session";
 
 // ===================== LOGIN =====================
@@ -384,13 +426,25 @@ function LoginScreen({ onLogin }) {
   const [pass, setPass]   = useState("");
   const [error, setError] = useState("");
 
-  const login = () => {
-    if (email === AUTH_USER && pass === AUTH_PASS) {
-      localStorage.setItem(SESSION_KEY, "1");
-      onLogin();
-    } else {
-      setError("Email o contraseña incorrectos.");
+  const [loading, setLoading] = useState(false);
+  const login = async () => {
+    if (!email || !pass) return;
+    setLoading(true); setError("");
+    if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ email, isAdmin: true }));
+      onLogin({ email, isAdmin: true }); setLoading(false); return;
     }
+    try {
+      const fb = await import("./firebase.js");
+      const snap = await fb.getDoc(fb.doc(fb.db, "central", "main"));
+      const users = snap.exists() && snap.data()["ce-users"] ? JSON.parse(snap.data()["ce-users"]) : [];
+      const found = users.find(u => u.email === email && u.password === pass);
+      if (found) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ email, isAdmin: false }));
+        onLogin({ email, isAdmin: false });
+      } else { setError("Email o contraseña incorrectos."); }
+    } catch { setError("Error de conexión. Intentá de nuevo."); }
+    setLoading(false);
   };
 
   return (
@@ -412,8 +466,8 @@ function LoginScreen({ onLogin }) {
             style={{ width:"100%", padding:"10px 12px", border:"1px solid #ddd", borderRadius:"7px", fontSize:"13px", outline:"none" }} />
         </div>
         {error && <div style={{ background:"#fdecea", color:"#c0392b", borderRadius:"7px", padding:"8px 12px", fontSize:"11px", marginBottom:"14px", textAlign:"center" }}>{error}</div>}
-        <button onClick={login} style={{ width:"100%", background:"#1a5276", color:"#fff", border:"none", borderRadius:"7px", padding:"11px", fontSize:"13px", fontWeight:"700", cursor:"pointer" }}>
-          Ingresar
+        <button onClick={login} disabled={loading} style={{ width:"100%", background:"#1a5276", color:"#fff", border:"none", borderRadius:"7px", padding:"11px", fontSize:"13px", fontWeight:"700", cursor:"pointer" }}>
+          {loading ? "Verificando..." : "Ingresar"}
         </button>
       </div>
     </div>
@@ -428,14 +482,16 @@ const INITIAL_LOCALES = [
 
 export default function App() {
   const [fbOk, setFbOk] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(() => localStorage.getItem(SESSION_KEY) === "1");
+  const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; } });
   useEffect(() => { onFbConnected = setFbOk; }, []);
 
-  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
+  const logout = () => { localStorage.removeItem(SESSION_KEY); setCurrentUser(null); };
+  if (!currentUser) return <LoginScreen onLogin={u => setCurrentUser(u)} />;
 
   const [locales,   setLocales]   = usePersisted("ce-locales",  INITIAL_LOCALES);
   const [insumos,   setInsumos]   = usePersisted("ce-insumos",  []);
   const [allEnvios, setAllEnvios] = usePersisted("ce-envios",   {});
+  const [usuarios,  setUsuarios]  = usePersisted("ce-users",    []);
 
   const [selLocal, setSelLocal] = useState(null);
   const [tabLocal, setTabLocal] = useState(0); // 0=nuevo envío, 1=historial
@@ -475,11 +531,16 @@ export default function App() {
         <button style={S.localBtn(selLocal==="locales","#7d3c98")} onClick={()=>setSelLocal("locales")}>
           <span>🏪</span> Locales
         </button>
+        {currentUser?.isAdmin && (
+          <button style={S.localBtn(selLocal==="usuarios","#d35400")} onClick={()=>setSelLocal("usuarios")}>
+            <span>👥</span> Usuarios
+          </button>
+        )}
 
         <div style={{marginTop:"auto",borderTop:"1px solid #ffffff10",padding:"12px 14px"}}>
           <div style={{fontSize:"9px",color:"#446",fontWeight:"700",letterSpacing:"1px",marginBottom:"6px"}}>SESIÓN</div>
-          <div style={{fontSize:"10px",color:"#667",marginBottom:"8px",wordBreak:"break-all"}}>{AUTH_USER}</div>
-          <button onClick={() => { localStorage.removeItem(SESSION_KEY); setLoggedIn(false); }}
+          <div style={{fontSize:"10px",color:"#667",marginBottom:"8px",wordBreak:"break-all"}}>{currentUser?.email}</div>
+          <button onClick={logout}
             style={{width:"100%",background:"transparent",border:"1px solid #334",borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"10px",color:"#889",textAlign:"left"}}>
             ↩ Cerrar sesión
           </button>
@@ -511,6 +572,7 @@ export default function App() {
         )}
         {selLocal==="insumos" && <InsumosTab insumos={insumos} setInsumos={setInsumos} />}
         {selLocal==="locales" && <LocalesTab locales={locales} setLocales={setLocales} />}
+        {selLocal==="usuarios" && currentUser?.isAdmin && <UsuariosTab usuarios={usuarios} setUsuarios={setUsuarios} />}
         {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={insumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
         {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
       </div>
