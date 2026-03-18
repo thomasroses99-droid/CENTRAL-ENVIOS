@@ -49,7 +49,7 @@ function usePersisted(key, initial) {
 const fmt = n => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n ?? 0);
 const today = () => new Date().toISOString().split("T")[0];
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
-const CATS = ["Carnes","Panificados","Lacteos","Verduras","Salsas base","Aceites","Especias","Guarniciones","Descartables","Packaging","Comandera","Limpieza"];
+const CATS = ["Carnes","Panificados","Lacteos","Verduras","Salsas","Salsas base","Aceites","Especias","Guarniciones","Descartables","Packaging","Comandera","Limpieza"];
 const COLORES = ["#c0392b","#2471a3","#1a7a3a","#7d3c98","#d35400","#117a65","#1a5276","#784212"];
 
 // ===================== STYLES =====================
