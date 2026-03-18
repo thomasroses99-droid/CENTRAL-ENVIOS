@@ -130,15 +130,17 @@ function NuevoEnvio({ local, insumos, onGuardar }) {
   const insFiltrados = insumos.filter(i => i.nombre.toLowerCase().includes(busqueda.toLowerCase()));
   const toggleIns = ins => {
     if (items.find(it => it.insumo_id === ins.id)) setItems(items.filter(it => it.insumo_id !== ins.id));
-    else setItems([...items, { insumo_id: ins.id, nombre: ins.nombre, unidad: ins.unidad, cantidad: "", precio_unidad: ins.precio_unidad }]);
+    else setItems([...items, { insumo_id: ins.id, nombre: ins.nombre, unidad: ins.unidad, cantidad: "", precio_unidad: ins.precio_unidad, merma_pct: 0 }]);
   };
   const updCant   = (id, v) => setItems(items.map(it => it.insumo_id===id ? {...it, cantidad: v} : it));
   const updPrecio = (id, v) => setItems(items.map(it => it.insumo_id===id ? {...it, precio_unidad: Number(v)} : it));
+  const updMerma  = (id, v) => setItems(items.map(it => it.insumo_id===id ? {...it, merma_pct: Number(v)} : it));
+  const subtotal  = it => { const m = it.merma_pct > 0 ? 100/(100-it.merma_pct) : 1; return (Number(it.cantidad)||0) * it.precio_unidad * m; };
   const addHora = () => setHoras([...horas, { id: uid(), descripcion:"", horas:"", precio_hora:"" }]);
   const updHora = (id, f, v) => setHoras(horas.map(h => h.id!==id ? h : {...h, [f]:v}));
   const delHora = id => setHoras(horas.filter(h => h.id!==id));
 
-  const totalMerc  = items.reduce((s,it) => s + (Number(it.cantidad)||0)*it.precio_unidad, 0);
+  const totalMerc  = items.reduce((s,it) => s + subtotal(it), 0);
   const totalHoras = horas.reduce((s,h) => s + (Number(h.horas)||0)*(Number(h.precio_hora)||0), 0);
   const total = totalMerc + totalHoras;
 
@@ -147,7 +149,7 @@ function NuevoEnvio({ local, insumos, onGuardar }) {
     if (!fecha || itemsOk.length === 0) { alert("Completá la fecha y al menos un insumo con cantidad."); return; }
     onGuardar({
       id: uid(), fecha, nota,
-      items: itemsOk.map(it => ({...it, cantidad: Number(it.cantidad)})),
+      items: itemsOk.map(it => ({...it, cantidad: Number(it.cantidad), merma_pct: it.merma_pct||0, subtotal: subtotal(it)})),
       horas: horas.filter(h => h.descripcion && Number(h.horas)>0).map(h => ({...h, horas:Number(h.horas), precio_hora:Number(h.precio_hora)})),
       total_mercaderia: totalMerc, total_horas: totalHoras, total, pagado: false,
     });
@@ -182,7 +184,7 @@ function NuevoEnvio({ local, insumos, onGuardar }) {
         </div>
         {items.length > 0 && (
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
-            <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Cantidad</th><th style={S.th}>Unidad</th><th style={S.th}>Precio unit.</th><th style={S.th}>Subtotal</th><th style={S.th}></th></tr></thead>
+            <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Cantidad</th><th style={S.th}>Unidad</th><th style={S.th}>Precio unit.</th><th style={S.th}>Merma %</th><th style={S.th}>Subtotal</th><th style={S.th}></th></tr></thead>
             <tbody>
               {items.map(it => (
                 <tr key={it.insumo_id}>
@@ -190,7 +192,11 @@ function NuevoEnvio({ local, insumos, onGuardar }) {
                   <td style={S.td}><input type="number" value={it.cantidad} onChange={e=>updCant(it.insumo_id,e.target.value)} style={{...S.inp, width:"80px"}} placeholder="0" /></td>
                   <td style={S.td}>{it.unidad}</td>
                   <td style={S.td}><input type="number" value={it.precio_unidad} onChange={e=>updPrecio(it.insumo_id,e.target.value)} style={{...S.inp, width:"110px"}} /></td>
-                  <td style={S.td}><strong>{fmt((Number(it.cantidad)||0)*it.precio_unidad)}</strong></td>
+                  <td style={S.td}><input type="number" value={it.merma_pct||0} onChange={e=>updMerma(it.insumo_id,e.target.value)} style={{...S.inp, width:"65px"}} min="0" max="99" placeholder="0" /></td>
+                  <td style={S.td}>
+                    <strong>{fmt(subtotal(it))}</strong>
+                    {it.merma_pct>0 && <div style={{fontSize:"10px",color:"#e67e22"}}>+{it.merma_pct}% merma</div>}
+                  </td>
                   <td style={S.td}><button onClick={()=>setItems(items.filter(i=>i.insumo_id!==it.insumo_id))} style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:"16px"}}>×</button></td>
                 </tr>
               ))}
@@ -301,10 +307,17 @@ function Historial({ local, envios, setEnvios }) {
           {expandido===e.id && (
             <div style={{marginTop:"14px",borderTop:"1px solid #f0f0f0",paddingTop:"14px"}}>
               <table style={{width:"100%",borderCollapse:"collapse",marginBottom:e.horas?.length>0?"12px":0}}>
-                <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Cantidad</th><th style={S.th}>Unidad</th><th style={S.th}>Precio unit.</th><th style={S.th}>Subtotal</th></tr></thead>
+                <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Cantidad</th><th style={S.th}>Unidad</th><th style={S.th}>Precio unit.</th><th style={S.th}>Merma %</th><th style={S.th}>Subtotal</th></tr></thead>
                 <tbody>
                   {e.items.map((it,i)=>(
-                    <tr key={i}><td style={S.td}>{it.nombre}</td><td style={S.td}>{it.cantidad}</td><td style={S.td}>{it.unidad}</td><td style={S.td}>{fmt(it.precio_unidad)}</td><td style={S.td}><strong>{fmt(it.cantidad*it.precio_unidad)}</strong></td></tr>
+                    <tr key={i}>
+                      <td style={S.td}>{it.nombre}</td>
+                      <td style={S.td}>{it.cantidad}</td>
+                      <td style={S.td}>{it.unidad}</td>
+                      <td style={S.td}>{fmt(it.precio_unidad)}</td>
+                      <td style={S.td}>{it.merma_pct>0 ? <Tag color="#e67e22">{it.merma_pct}%</Tag> : <span style={{color:"#ccc"}}>—</span>}</td>
+                      <td style={S.td}><strong>{fmt(it.subtotal ?? it.cantidad*it.precio_unidad)}</strong></td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
