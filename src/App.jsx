@@ -485,9 +485,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; } });
   useEffect(() => { onFbConnected = setFbOk; }, []);
 
-  const logout = () => { localStorage.removeItem(SESSION_KEY); setCurrentUser(null); };
-  if (!currentUser) return <LoginScreen onLogin={u => setCurrentUser(u)} />;
-
   const [locales,   setLocales]   = usePersisted("ce-locales",  INITIAL_LOCALES);
   const [insumos,   setInsumos]   = usePersisted("ce-insumos",  []);
   const [allEnvios, setAllEnvios] = usePersisted("ce-envios",   {});
@@ -495,6 +492,9 @@ export default function App() {
 
   const [selLocal, setSelLocal] = useState(null);
   const [tabLocal, setTabLocal] = useState(0); // 0=nuevo envío, 1=historial
+
+  const logout = () => { localStorage.removeItem(SESSION_KEY); setCurrentUser(null); };
+  if (!currentUser) return <LoginScreen onLogin={u => setCurrentUser(u)} />;
 
   const localActual = locales.find(l => l.id === selLocal);
   const getEnvios = id => allEnvios[id] || [];
