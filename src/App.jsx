@@ -45,6 +45,14 @@ function usePersisted(key, initial) {
   return [value, set];
 }
 
+// ===================== AUTH =====================
+const SESSION_KEY = "ce-session";
+const USUARIOS_FIJOS = [
+  { email: "thomasroses99@gmail.com",      password: "Marcelo52",      isAdmin: true  },
+  { email: "nicolasroses199412@gmail.com", password: "Corrientes1967", isAdmin: false },
+  { email: "matiroses00@gmail.com",        password: "Evaperon8124",   isAdmin: false },
+];
+
 // ===================== HELPERS =====================
 const fmt = n => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n ?? 0);
 const today = () => new Date().toISOString().split("T")[0];
@@ -419,14 +427,6 @@ function UsuariosTab({ usuarios, setUsuarios }) {
     </div>
   );
 }
-
-// Auth simple
-const SESSION_KEY = "ce-session";
-const USUARIOS_FIJOS = [
-  { email: "thomasroses99@gmail.com",      password: "Marcelo52",      isAdmin: true  },
-  { email: "nicolasroses199412@gmail.com", password: "Corrientes1967", isAdmin: false },
-  { email: "matiroses00@gmail.com",        password: "Evaperon8124",   isAdmin: false },
-];
 
 // ===================== LOGIN =====================
 function LoginScreen({ onLogin }) {
