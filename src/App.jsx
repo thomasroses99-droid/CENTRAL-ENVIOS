@@ -373,6 +373,52 @@ function LocalesTab({ locales, setLocales }) {
   );
 }
 
+// ===================== LOGIN =====================
+function LoginScreen() {
+  const [email, setEmail] = useState("");
+  const [pass, setPass]   = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const login = async () => {
+    if (!email || !pass) return;
+    setLoading(true); setError("");
+    try {
+      const fb = await import("./firebase.js");
+      await fb.signInWithEmailAndPassword(fb.auth, email, pass);
+    } catch {
+      setError("Email o contraseña incorrectos.");
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#16213e", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
+      <div style={{ background:"#fff", borderRadius:"14px", padding:"40px 36px", width:"100%", maxWidth:"360px", boxShadow:"0 8px 40px #00000050" }}>
+        <div style={{ textAlign:"center", marginBottom:"28px" }}>
+          <div style={{ fontSize:"40px", marginBottom:"10px" }}>📦</div>
+          <div style={{ fontWeight:"700", fontSize:"18px", color:"#16213e" }}>Central de Envíos</div>
+          <div style={{ fontSize:"11px", color:"#888", marginTop:"4px" }}>Gestión de envíos entre locales</div>
+        </div>
+        <div style={{ marginBottom:"12px" }}>
+          <div style={{ fontSize:"10px", color:"#888", marginBottom:"4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>Email</div>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="tu@email.com"
+            style={{ width:"100%", padding:"10px 12px", border:"1px solid #ddd", borderRadius:"7px", fontSize:"13px", outline:"none" }} />
+        </div>
+        <div style={{ marginBottom:"20px" }}>
+          <div style={{ fontSize:"10px", color:"#888", marginBottom:"4px", textTransform:"uppercase", letterSpacing:"0.08em" }}>Contraseña</div>
+          <input type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="••••••••"
+            style={{ width:"100%", padding:"10px 12px", border:"1px solid #ddd", borderRadius:"7px", fontSize:"13px", outline:"none" }} />
+        </div>
+        {error && <div style={{ background:"#fdecea", color:"#c0392b", borderRadius:"7px", padding:"8px 12px", fontSize:"11px", marginBottom:"14px", textAlign:"center" }}>{error}</div>}
+        <button onClick={login} disabled={loading}
+          style={{ width:"100%", background:"#1a5276", color:"#fff", border:"none", borderRadius:"7px", padding:"11px", fontSize:"13px", fontWeight:"700", cursor:"pointer" }}>
+          {loading ? "Ingresando..." : "Ingresar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ===================== MAIN APP =====================
 const INITIAL_LOCALES = [
   { id:"bar-deportista", nombre:"Bar Deportista", color:"#c0392b" },
@@ -381,7 +427,20 @@ const INITIAL_LOCALES = [
 
 export default function App() {
   const [fbOk, setFbOk] = useState(null);
+  const [user, setUser] = useState(undefined);
   useEffect(() => { onFbConnected = setFbOk; }, []);
+  useEffect(() => {
+    import("./firebase.js").then(fb => {
+      fb.onAuthStateChanged(fb.auth, u => setUser(u ?? null));
+    });
+  }, []);
+
+  if (user === undefined) return (
+    <div style={{ minHeight:"100vh", background:"#16213e", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ color:"#9ab", fontSize:"12px" }}>⏳ Cargando...</div>
+    </div>
+  );
+  if (!user) return <LoginScreen />;
 
   const [locales,   setLocales]   = usePersisted("ce-locales",  INITIAL_LOCALES);
   const [insumos,   setInsumos]   = usePersisted("ce-insumos",  []);
@@ -425,6 +484,15 @@ export default function App() {
         <button style={S.localBtn(selLocal==="locales","#7d3c98")} onClick={()=>setSelLocal("locales")}>
           <span>🏪</span> Locales
         </button>
+
+        <div style={{marginTop:"auto",borderTop:"1px solid #ffffff10",padding:"12px 14px"}}>
+          <div style={{fontSize:"9px",color:"#446",fontWeight:"700",letterSpacing:"1px",marginBottom:"6px"}}>SESIÓN</div>
+          <div style={{fontSize:"10px",color:"#667",marginBottom:"8px",wordBreak:"break-all"}}>{user?.email}</div>
+          <button onClick={()=>import("./firebase.js").then(fb=>fb.signOut(fb.auth))}
+            style={{width:"100%",background:"transparent",border:"1px solid #334",borderRadius:"6px",padding:"6px 10px",cursor:"pointer",fontSize:"10px",color:"#889",textAlign:"left"}}>
+            ↩ Cerrar sesión
+          </button>
+        </div>
       </div>
 
       {/* MAIN */}
