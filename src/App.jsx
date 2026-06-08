@@ -179,6 +179,11 @@ function calcConsumoProduccion(produccion, salsas) {
   return consumo;
 }
 
+function calcConsumoMedallon(produccionMedallon) {
+  const total = (produccionMedallon||[]).filter(p => p.tipo !== "despacho").reduce((s, p) => s + (p.carneKg || 0), 0);
+  return total > 0 ? { 1: total } : {};
+}
+
 const fmt2 = n => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
 
 // ── Estilos zona-sur para sección Recetas ──
@@ -874,7 +879,7 @@ function UsuariosTab({ usuarios, setUsuarios }) {
 }
 
 // ===================== STOCK =====================
-function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, setIngresosStock, salsas, produccion, allEnvios }) {
+function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, setIngresosStock, salsas, produccion, allEnvios, produccionMedallon }) {
   const [tabStock, setTabStock] = useState(0); // 0=actual, 1=ingresos, 2=recetas
   const [form, setForm] = useState({ fecha: today(), insumo_id: cookInsumos[0]?.id || "", cantidad: "", nota: "" });
   const [histOpen, setHistOpen] = useState(false);
@@ -888,11 +893,12 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
 
   const consumoProd  = calcConsumoProduccion(produccion, salsas);
   const consumoEnv   = calcConsumoEnvios(allEnvios);
+  const consumoMed   = calcConsumoMedallon(produccionMedallon);
 
   const stockActual = cookInsumos.map(ins => {
     const inicial   = Number(stockInicial[ins.id] || 0);
     const recibido  = ingresosStock.filter(e => e.insumo_id === ins.id).reduce((a,e) => a + e.cantidad, 0);
-    const usadoProd = consumoProd[ins.id] || 0;
+    const usadoProd = (consumoProd[ins.id] || 0) + (consumoMed[ins.id] || 0);
     const usadoEnv  = consumoEnv[ins.id]  || 0;
     const usado     = usadoProd + usadoEnv;
     const actual    = inicial + recibido - usado;
@@ -916,6 +922,10 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
     const color = producidoKg===0&&despachado===0 ? "#aaa" : actualKg<0 ? "#c0392b" : actualKg<(esPU?2:0.2) ? "#e67e22" : "#1a7a3a";
     return { ...s, producidoKg, despachado, actualKg, esPU, color };
   });
+  const medallonesProducidos = (produccionMedallon||[]).filter(p => p.tipo !== "despacho").reduce((s, p) => s + (p.medallones||0), 0);
+  const medallonesDesp       = (produccionMedallon||[]).filter(p => p.tipo === "despacho").reduce((s, p) => s + (p.medallones||0), 0);
+  const medallonStock = medallonesProducidos - medallonesDesp;
+  const medallonColor = medallonesProducidos===0&&medallonesDesp===0 ? "#aaa" : medallonStock<0 ? "#c0392b" : medallonStock<5 ? "#e67e22" : "#1a7a3a";
 
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "24px" }}>
@@ -1039,6 +1049,12 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>{["Receta","Producido","Despachado","Stock actual"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
+              <tr style={{ background: "#fff8f0" }}>
+                <td style={S.td}>🥩 Medallón (carne)</td>
+                <td style={{ ...S.td, color: medallonesProducidos>0?"#1a7a3a":"#bbb", fontWeight:"700" }}>{medallonesProducidos>0?`${medallonesProducidos} u`:"—"}</td>
+                <td style={{ ...S.td, color: medallonesDesp>0?"#c0392b":"#bbb" }}>{medallonesDesp>0?`${medallonesDesp} u`:"—"}</td>
+                <td style={{ ...S.td, fontWeight:"700", color: medallonColor }}>{medallonesProducidos===0&&medallonesDesp===0?"—":`${medallonStock} u`}</td>
+              </tr>
               {stockRecetas.map((s, i) => (
                 <tr key={s.id} style={{ background: i%2===0?"#fafafa":"#fff" }}>
                   <td style={S.td}>🧪 {s.nombre}</td>
@@ -1056,6 +1072,141 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
             </tbody>
           </table>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ===================== MEDALLÓN =====================
+function MedallonTab({ produccionMedallon, setProduccionMedallon, locales }) {
+  const [fecha, setFecha] = useState(today());
+  const [carneKg, setCarneKg] = useState("");
+  const [medallones, setMedallones] = useState("");
+  const [nota, setNota] = useState("");
+  const [despFecha, setDespFecha] = useState(today());
+  const [despCant, setDespCant] = useState("");
+  const [despLocal, setDespLocal] = useState(locales[0]?.id || "");
+  const [despNota, setDespNota] = useState("");
+  const [histOpen, setHistOpen] = useState(false);
+
+  const totalProd = (produccionMedallon||[]).filter(p => p.tipo !== "despacho").reduce((s,p) => s + (p.medallones||0), 0);
+  const totalDesp = (produccionMedallon||[]).filter(p => p.tipo === "despacho").reduce((s,p) => s + (p.medallones||0), 0);
+  const stockAct  = totalProd - totalDesp;
+  const totalCarne= (produccionMedallon||[]).filter(p => p.tipo !== "despacho").reduce((s,p) => s + (p.carneKg||0), 0);
+  const stockColor= stockAct < 0 ? "#c0392b" : stockAct === 0 ? "#aaa" : stockAct < 10 ? "#e67e22" : "#1a7a3a";
+
+  const fmtFecha = iso => { try { const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; } catch { return iso; } };
+
+  const registrar = () => {
+    if (!carneKg || !medallones || Number(carneKg)<=0 || Number(medallones)<=0) return;
+    setProduccionMedallon(prev => [{ id:Date.now(), fecha, tipo:"produccion", carneKg:Number(carneKg), medallones:Number(medallones), nota:nota.trim() }, ...(prev||[])]);
+    setCarneKg(""); setMedallones(""); setNota("");
+  };
+
+  const despachar = () => {
+    if (!despCant || Number(despCant)<=0 || !despLocal) return;
+    const local = locales.find(l => l.id === despLocal);
+    setProduccionMedallon(prev => [{ id:Date.now(), fecha:despFecha, tipo:"despacho", carneKg:0, medallones:Number(despCant), local_id:despLocal, local_nombre:local?.nombre||"", nota:despNota.trim() }, ...(prev||[])]);
+    setDespCant(""); setDespNota("");
+  };
+
+  const grPorMedallon = carneKg && medallones && Number(medallones)>0 ? (Number(carneKg)/Number(medallones)*1000).toFixed(0) : null;
+
+  return (
+    <div style={{ maxWidth:"900px", margin:"0 auto", padding:"24px" }}>
+      <h2 style={{ margin:"0 0 20px", color:"#1a2e1a", fontFamily:"'DM Mono',monospace" }}>🥩 Receta Medallón</h2>
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"10px", marginBottom:"20px" }}>
+        <RStatBox label="Stock actual" value={`${stockAct} u`} accent={stockAct>0} />
+        <RStatBox label="Total producidos" value={`${totalProd} u`} />
+        <RStatBox label="Total despachados" value={`${totalDesp} u`} />
+        <RStatBox label="Carne usada total" value={`${totalCarne.toFixed(2)} kg`} />
+      </div>
+
+      <RCard style={{ marginBottom:"14px" }}>
+        <RH title="+ Registrar producción" />
+        <div style={{ display:"flex", gap:"10px", flexWrap:"wrap", alignItems:"flex-end" }}>
+          <div>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>FECHA</div>
+            <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={RIS} />
+          </div>
+          <div>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>CARNE USADA (kg)</div>
+            <input type="number" min="0" step="0.01" placeholder="0.00" value={carneKg} onChange={e=>setCarneKg(e.target.value)} style={{...RIS, width:"130px"}} />
+          </div>
+          <div>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>MEDALLONES PRODUCIDOS</div>
+            <input type="number" min="1" placeholder="0" value={medallones} onChange={e=>setMedallones(e.target.value)} style={{...RIS, width:"160px"}} />
+          </div>
+          <div style={{ flex:"1 1 160px" }}>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>NOTA (opcional)</div>
+            <input value={nota} onChange={e=>setNota(e.target.value)} placeholder="Ej: producción del día" style={{...RIS, width:"100%"}} />
+          </div>
+          <RBtn onClick={registrar}>+ Registrar</RBtn>
+        </div>
+        {grPorMedallon && (
+          <div style={{ marginTop:"10px", fontSize:"11px", color:"#1a7a3a", fontFamily:"'DM Mono',monospace" }}>
+            → {grPorMedallon} gr por medallón
+          </div>
+        )}
+      </RCard>
+
+      <RCard style={{ marginBottom:"14px", borderLeft:"4px solid #e67e22" }}>
+        <div style={{ fontWeight:"700", fontSize:"13px", marginBottom:"12px", color:"#e67e22", fontFamily:"'DM Mono',monospace" }}>📦 Despachar a local</div>
+        <div style={{ display:"flex", gap:"10px", flexWrap:"wrap", alignItems:"flex-end" }}>
+          <div>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>FECHA</div>
+            <input type="date" value={despFecha} onChange={e=>setDespFecha(e.target.value)} style={RIS} />
+          </div>
+          <div>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>LOCAL DESTINO</div>
+            <select value={despLocal} onChange={e=>setDespLocal(e.target.value)} style={{...RIS, width:"160px"}}>
+              {locales.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>CANTIDAD (unidades)</div>
+            <input type="number" min="1" placeholder="0" value={despCant} onChange={e=>setDespCant(e.target.value)} style={{...RIS, width:"130px"}} />
+          </div>
+          <div style={{ flex:"1 1 160px" }}>
+            <div style={{ color:"#5a8a6e", fontSize:"10px", fontFamily:"'DM Mono',monospace", marginBottom:"4px" }}>NOTA (opcional)</div>
+            <input value={despNota} onChange={e=>setDespNota(e.target.value)} placeholder="Ej: semana 12" style={{...RIS, width:"100%"}} />
+          </div>
+          <RBtn onClick={despachar} style={{ background:"#e67e22" }}>📦 Despachar</RBtn>
+        </div>
+        {locales.length===0 && <div style={{ marginTop:"10px", fontSize:"12px", color:"#e67e22" }}>⚠ Agregá locales primero en "Locales".</div>}
+      </RCard>
+
+      {(produccionMedallon||[]).length > 0 && (
+        <RCard>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }} onClick={()=>setHistOpen(v=>!v)}>
+            <div style={{ fontWeight:"700", fontSize:"13px", fontFamily:"'DM Mono',monospace" }}>Historial ({(produccionMedallon||[]).length})</div>
+            <span style={{ fontSize:"12px", color:"#888" }}>{histOpen?"▲ Ocultar":"▼ Ver"}</span>
+          </div>
+          {histOpen && (
+            <div style={{ marginTop:"12px", display:"flex", flexDirection:"column", gap:"4px" }}>
+              {(produccionMedallon||[]).slice(0,60).map(p => {
+                const esD = p.tipo==="despacho";
+                return (
+                  <div key={p.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", borderRadius:"7px", background:esD?"#fff8f0":"#f0faf4", borderLeft:`3px solid ${esD?"#e67e22":"#27ae60"}` }}>
+                    <div style={{ display:"flex", gap:"10px", alignItems:"center", flexWrap:"wrap" }}>
+                      <span style={{ fontWeight:"700", fontSize:"12px", fontFamily:"'DM Mono',monospace" }}>{fmtFecha(p.fecha)}</span>
+                      {esD
+                        ? <span style={{fontSize:"12px"}}>📦 → {p.local_nombre}</span>
+                        : <span style={{fontSize:"12px"}}>🥩 {p.carneKg} kg → {p.medallones} u</span>
+                      }
+                      {p.nota && <span style={{fontSize:"11px",color:"#888"}}>{p.nota}</span>}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+                      <span style={{ fontWeight:"700", fontSize:"12px", color:esD?"#e67e22":"#1a7a3a" }}>{esD?`-${p.medallones} u`:`+${p.medallones} u`}</span>
+                      <button onClick={()=>{ if(confirm("¿Eliminar?")) setProduccionMedallon(prev=>prev.filter(x=>x.id!==p.id)); }} style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:"14px",padding:"0 4px"}}>×</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </RCard>
       )}
     </div>
   );
@@ -1123,8 +1274,9 @@ export default function App() {
   const [usuarios,     setUsuarios]     = usePersisted("ce-users",        []);
   const [cookInsumos,  setCookInsumos]  = usePersisted("ce-cook-insumos", initialCookInsumos);
   const [salsas,       setSalsas]       = usePersisted("ce-salsas",       initialSalsasData);
-  const [produccion,   setProduccion]   = usePersisted("ce-produccion",   []);
-  const [costosFijos,  setCostosFijos]  = usePersisted("ce-costos-fijos",  []);
+  const [produccion,          setProduccion]          = usePersisted("ce-produccion",     []);
+  const [produccionMedallon,  setProduccionMedallon]  = usePersisted("ce-prod-medallon",  []);
+  const [costosFijos,         setCostosFijos]         = usePersisted("ce-costos-fijos",   []);
   const [stockInicial, setStockInicial] = usePersisted("ce-stock-inicial", {});
   const [ingresosStock,setIngresosStock]= usePersisted("ce-ingresos-stock",[]);
 
@@ -1143,6 +1295,7 @@ export default function App() {
     : selLocal==="usuarios"   ? "👥 Usuarios"
     : selLocal==="insumos"    ? "🛒 Insumos"
     : selLocal==="recetas"    ? "🧪 Recetas"
+    : selLocal==="medallon"   ? "🥩 Receta Medallón"
     : selLocal==="produccion" ? "🏭 Producción"
     : selLocal==="costos"     ? "💰 Costos fijos"
     : selLocal==="stock"      ? "📊 Stock"
@@ -1190,6 +1343,9 @@ export default function App() {
         <button style={S.localBtn(selLocal==="recetas","#1a7a3a")} onClick={()=>setSelLocal("recetas")}>
           <span>🧪</span> Recetas
         </button>
+        <button style={S.localBtn(selLocal==="medallon","#8b4513")} onClick={()=>setSelLocal("medallon")}>
+          <span>🥩</span> Medallón
+        </button>
         <button style={S.localBtn(selLocal==="produccion","#e67e22")} onClick={()=>setSelLocal("produccion")}>
           <span>🏭</span> Producción
         </button>
@@ -1232,8 +1388,9 @@ export default function App() {
         {selLocal==="usuarios"    && currentUser?.isAdmin && <UsuariosTab usuarios={usuarios} setUsuarios={setUsuarios} />}
         {selLocal==="insumos"     && <InsumosTab insumos={cookInsumos} setInsumos={setCookInsumos} />}
         {selLocal==="recetas"     && <SalsasTab salsas={salsas} setSalsas={setSalsas} cookInsumos={cookInsumos} />}
+        {selLocal==="medallon"    && <MedallonTab produccionMedallon={produccionMedallon} setProduccionMedallon={setProduccionMedallon} locales={locales} />}
         {selLocal==="produccion"  && <ProduccionTab salsas={salsas} cookInsumos={cookInsumos} produccion={produccion} setProduccion={setProduccion} locales={locales} />}
-        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInicial={stockInicial} setStockInicial={setStockInicial} ingresosStock={ingresosStock} setIngresosStock={setIngresosStock} salsas={salsas} produccion={produccion} allEnvios={allEnvios} />}
+        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInicial={stockInicial} setStockInicial={setStockInicial} ingresosStock={ingresosStock} setIngresosStock={setIngresosStock} salsas={salsas} produccion={produccion} allEnvios={allEnvios} produccionMedallon={produccionMedallon} />}
         {selLocal==="costos"      && <CostosFijosTab costosFijos={costosFijos} setCostosFijos={setCostosFijos} />}
         {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={cookInsumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
         {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
