@@ -150,6 +150,22 @@ function calcCostoSalsa(salsa, insumos) {
   return kg > 0 ? total / kg : 0;
 }
 
+function calcConsumoProduccion(produccion, salsas) {
+  const consumo = {};
+  for (const p of (produccion || [])) {
+    if (p.tipo === "despacho") continue;
+    const salsa = salsas.find(s => s.id === p.salsa_id);
+    if (!salsa) continue;
+    const factor = salsa.rendTipo === "unidad"
+      ? p.cantidadKg / (salsa.rendCantidad || 1)
+      : (() => { const kg = calcPesoTotalSalsa(salsa); return kg > 0 ? p.cantidadKg / kg : 0; })();
+    for (const ing of (salsa.ingredientes || [])) {
+      consumo[ing.insumo_id] = (consumo[ing.insumo_id] || 0) + ing.cantidad * factor;
+    }
+  }
+  return consumo;
+}
+
 // ===================== INSUMOS =====================
 function InsumosTab({ insumos, setInsumos }) {
   const [form, setForm] = useState({ nombre: "", unidad: "kg", precio_unidad: "", categoria: "Carnes" });
@@ -830,12 +846,36 @@ function UsuariosTab({ usuarios, setUsuarios }) {
 }
 
 // ===================== STOCK =====================
-function StockTab({ cookInsumos, stockInsumos, setStockInsumos, salsas, produccion }) {
-  const [tabStock, setTabStock] = useState(0); // 0=insumos, 1=recetas
-  const fmtGr = kg => { const gr = Math.round(kg * 1000); return gr >= 1000 ? `${(gr/1000).toFixed(2)} kg` : `${gr} gr`; };
+function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, setIngresosStock, salsas, produccion }) {
+  const [tabStock, setTabStock] = useState(0); // 0=actual, 1=ingresos, 2=recetas
+  const [form, setForm] = useState({ fecha: today(), insumo_id: cookInsumos[0]?.id || "", cantidad: "", nota: "" });
+  const [histOpen, setHistOpen] = useState(false);
 
-  const setQty = (id, v) => setStockInsumos({ ...stockInsumos, [id]: v === "" ? "" : Number(v) });
-  const byCat = CATS.map(cat => ({ cat, items: cookInsumos.filter(i => i.categoria === cat) })).filter(g => g.items.length > 0);
+  const fmtKg = kg => {
+    if (kg === 0) return "0";
+    const abs = Math.abs(kg);
+    return abs >= 1 ? `${kg.toFixed(2)} kg` : `${Math.round(kg * 1000)} gr`;
+  };
+  const fmtFecha = iso => { try { const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; } catch { return iso; } };
+
+  const consumo = calcConsumoProduccion(produccion, salsas);
+
+  const stockActual = cookInsumos.map(ins => {
+    const inicial = Number(stockInicial[ins.id] || 0);
+    const recibido = ingresosStock.filter(e => e.insumo_id === ins.id).reduce((a,e) => a + e.cantidad, 0);
+    const usado = consumo[ins.id] || 0;
+    const actual = inicial + recibido - usado;
+    const color = actual < 0 ? "#c0392b" : actual === 0 ? "#aaa" : actual < 1 ? "#e67e22" : "#1a7a3a";
+    return { ...ins, inicial, recibido, usado, actual, color };
+  });
+
+  const byCat = CATS.map(cat => ({ cat, items: stockActual.filter(i => i.categoria === cat) })).filter(g => g.items.length > 0);
+
+  const registrarIngreso = () => {
+    if (!form.insumo_id || !form.cantidad || Number(form.cantidad) <= 0) return;
+    setIngresosStock(prev => [{ id: uid(), fecha: form.fecha, insumo_id: Number(form.insumo_id), cantidad: Number(form.cantidad), nota: form.nota.trim() }, ...prev]);
+    setForm(f => ({ ...f, cantidad: "", nota: "" }));
+  };
 
   const stockRecetas = salsas.map(s => {
     const producidoKg = (produccion||[]).filter(p => p.salsa_id===s.id && p.tipo!=="despacho").reduce((a,p) => a+p.cantidadKg, 0);
@@ -847,51 +887,120 @@ function StockTab({ cookInsumos, stockInsumos, setStockInsumos, salsas, producci
   });
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "24px" }}>
       <h2 style={{ margin: "0 0 16px", color: "#1a2e1a" }}>Stock</h2>
       <div style={{ display: "flex", gap: "4px", marginBottom: "20px" }}>
-        <button style={S.tab(tabStock===0)} onClick={() => setTabStock(0)}>🛒 Insumos</button>
-        <button style={S.tab(tabStock===1)} onClick={() => setTabStock(1)}>🧪 Recetas</button>
+        <button style={S.tab(tabStock===0)} onClick={() => setTabStock(0)}>📋 Stock actual</button>
+        <button style={S.tab(tabStock===1)} onClick={() => setTabStock(1)}>📥 Recibir mercadería</button>
+        <button style={S.tab(tabStock===2)} onClick={() => setTabStock(2)}>🧪 Stock recetas</button>
       </div>
 
+      {/* ── STOCK ACTUAL ── */}
       {tabStock === 0 && (
         <>
           {byCat.map(({ cat, items }) => (
             <div key={cat} style={S.card}>
               <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "10px", color: "#1a7a3a" }}>{cat}</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Unidad</th><th style={S.th}>Cantidad en stock</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th style={S.th}>Insumo</th>
+                    <th style={S.th}>Inicial</th>
+                    <th style={S.th}>Recibido</th>
+                    <th style={S.th}>Usado (producción)</th>
+                    <th style={S.th}>Stock actual</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {items.map(ins => {
-                    const qty = stockInsumos[ins.id] ?? "";
-                    const hasQty = qty !== "" && Number(qty) > 0;
-                    return (
-                      <tr key={ins.id}>
-                        <td style={S.td}>{ins.nombre}</td>
-                        <td style={{ ...S.td, color: "#888" }}>{ins.unidad}</td>
-                        <td style={S.td}>
-                          <input
-                            type="number" min="0" step="0.01"
-                            value={qty}
-                            onChange={e => setQty(ins.id, e.target.value)}
-                            placeholder="0"
-                            style={{ ...S.inp, width: "120px", color: hasQty ? "#1a7a3a" : "#aaa", fontWeight: hasQty ? "700" : "400" }}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {items.map((ins, i) => (
+                    <tr key={ins.id} style={{ background: i%2===0?"#fafafa":"#fff" }}>
+                      <td style={S.td}>{ins.nombre}</td>
+                      <td style={S.td}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <input type="number" min="0" step="0.01" value={stockInicial[ins.id] ?? ""} placeholder="0"
+                            onChange={e => setStockInicial(prev => ({ ...prev, [ins.id]: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                            style={{ ...S.inp, width: "80px", fontSize: "12px" }} />
+                          <span style={{ fontSize: "11px", color: "#aaa" }}>{ins.unidad}</span>
+                        </div>
+                      </td>
+                      <td style={{ ...S.td, color: ins.recibido > 0 ? "#2471a3" : "#bbb" }}>
+                        {ins.recibido > 0 ? `+${fmtKg(ins.recibido)} ${ins.unidad}` : "—"}
+                      </td>
+                      <td style={{ ...S.td, color: ins.usado > 0 ? "#e67e22" : "#bbb" }}>
+                        {ins.usado > 0.0001 ? `-${fmtKg(ins.usado)} ${ins.unidad}` : "—"}
+                      </td>
+                      <td style={{ ...S.td, fontWeight: "700", color: ins.color }}>
+                        {ins.actual === 0 && ins.inicial === 0 && ins.recibido === 0 ? "—" : `${fmtKg(ins.actual)} ${ins.unidad}`}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           ))}
-          {cookInsumos.length === 0 && <div style={{...S.card, color:"#888", textAlign:"center"}}>No hay insumos cargados. Agregalos en Insumos.</div>}
+          <div style={{ fontSize: "11px", color: "#aaa", textAlign: "center" }}>El campo "Inicial" es editable — ingresá el stock de arranque.</div>
         </>
       )}
 
+      {/* ── RECIBIR MERCADERÍA ── */}
       {tabStock === 1 && (
+        <>
+          <div style={S.card}>
+            <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "14px" }}>📥 Registrar ingreso de mercadería</div>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div><label style={S.label}>Fecha</label><input type="date" value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))} style={S.inp} /></div>
+              <div style={{ flex: "1 1 160px" }}>
+                <label style={S.label}>Insumo</label>
+                <select value={form.insumo_id} onChange={e=>setForm(f=>({...f,insumo_id:e.target.value}))} style={{...S.inp,width:"100%"}}>
+                  {cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad})</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Cantidad</label>
+                <input type="number" min="0" step="0.01" placeholder="0" value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))} style={{...S.inp,width:"110px"}} />
+              </div>
+              <div style={{ flex: "2 1 160px" }}>
+                <label style={S.label}>Nota (opcional)</label>
+                <input value={form.nota} onChange={e=>setForm(f=>({...f,nota:e.target.value}))} placeholder="Ej: Proveedor X" style={{...S.inp,width:"100%"}} />
+              </div>
+              <button onClick={registrarIngreso} style={S.btn("#2471a3")}>+ Registrar</button>
+            </div>
+          </div>
+
+          <div style={S.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={()=>setHistOpen(v=>!v)}>
+              <div style={{ fontWeight: "700", fontSize: "13px" }}>Historial de ingresos ({ingresosStock.length})</div>
+              <span style={{ fontSize: "12px", color: "#888" }}>{histOpen?"▲ Ocultar":"▼ Ver"}</span>
+            </div>
+            {histOpen && (
+              <div style={{ marginTop: "12px" }}>
+                {ingresosStock.length === 0 && <div style={{ color: "#aaa", fontSize: "13px" }}>Sin ingresos registrados todavía.</div>}
+                {ingresosStock.slice(0, 80).map(e => {
+                  const ins = cookInsumos.find(i => i.id === e.insumo_id);
+                  return (
+                    <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", borderRadius: "7px", marginBottom: "4px", background: "#f0f8ff", borderLeft: "3px solid #2471a3" }}>
+                      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                        <span style={{ fontWeight: "700", fontSize: "12px" }}>{fmtFecha(e.fecha)}</span>
+                        <span style={{ fontSize: "12px" }}>{ins?.nombre || "?"}</span>
+                        {e.nota && <span style={{ fontSize: "11px", color: "#888" }}>{e.nota}</span>}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontWeight: "700", fontSize: "12px", color: "#2471a3" }}>+{e.cantidad} {ins?.unidad}</span>
+                        <button onClick={()=>{ if(confirm("¿Eliminar?")) setIngresosStock(prev=>prev.filter(x=>x.id!==e.id)); }} style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:"14px",padding:"0 4px"}}>×</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── STOCK RECETAS ── */}
+      {tabStock === 2 && (
         <div style={S.card}>
-          <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Stock de recetas producidas</div>
+          <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Stock de recetas</div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>{["Receta","Producido","Despachado","Stock actual"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
@@ -899,13 +1008,13 @@ function StockTab({ cookInsumos, stockInsumos, setStockInsumos, salsas, producci
                 <tr key={s.id} style={{ background: i%2===0?"#fafafa":"#fff" }}>
                   <td style={S.td}>🧪 {s.nombre}</td>
                   <td style={{ ...S.td, color: s.producidoKg>0?"#1a7a3a":"#bbb", fontWeight:"700" }}>
-                    {s.producidoKg>0 ? (s.esPU ? `${Math.round(s.producidoKg)} u` : fmtGr(s.producidoKg)) : "—"}
+                    {s.producidoKg>0 ? (s.esPU?`${Math.round(s.producidoKg)} u`:fmtKg(s.producidoKg)) : "—"}
                   </td>
                   <td style={{ ...S.td, color: s.despachado>0?"#c0392b":"#bbb" }}>
-                    {s.despachado>0 ? (s.esPU ? `${Math.round(s.despachado)} u` : fmtGr(s.despachado)) : "—"}
+                    {s.despachado>0 ? (s.esPU?`${Math.round(s.despachado)} u`:fmtKg(s.despachado)) : "—"}
                   </td>
                   <td style={{ ...S.td, fontWeight:"700", color: s.color }}>
-                    {s.producidoKg===0&&s.despachado===0 ? "—" : s.esPU ? `${Math.round(s.actualKg)} u` : fmtGr(s.actualKg)}
+                    {s.producidoKg===0&&s.despachado===0?"—":s.esPU?`${Math.round(s.actualKg)} u`:fmtKg(s.actualKg)}
                   </td>
                 </tr>
               ))}
@@ -980,8 +1089,9 @@ export default function App() {
   const [cookInsumos,  setCookInsumos]  = usePersisted("ce-cook-insumos", initialCookInsumos);
   const [salsas,       setSalsas]       = usePersisted("ce-salsas",       initialSalsasData);
   const [produccion,   setProduccion]   = usePersisted("ce-produccion",   []);
-  const [costosFijos,  setCostosFijos]  = usePersisted("ce-costos-fijos", []);
-  const [stockInsumos, setStockInsumos] = usePersisted("ce-stock-ins",    {});
+  const [costosFijos,  setCostosFijos]  = usePersisted("ce-costos-fijos",  []);
+  const [stockInicial, setStockInicial] = usePersisted("ce-stock-inicial", {});
+  const [ingresosStock,setIngresosStock]= usePersisted("ce-ingresos-stock",[]);
 
   const [selLocal, setSelLocal] = useState(null);
   const [tabLocal, setTabLocal] = useState(0);
@@ -1088,7 +1198,7 @@ export default function App() {
         {selLocal==="insumos"     && <InsumosTab insumos={cookInsumos} setInsumos={setCookInsumos} />}
         {selLocal==="recetas"     && <SalsasTab salsas={salsas} setSalsas={setSalsas} cookInsumos={cookInsumos} />}
         {selLocal==="produccion"  && <ProduccionTab salsas={salsas} cookInsumos={cookInsumos} produccion={produccion} setProduccion={setProduccion} locales={locales} />}
-        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInsumos={stockInsumos} setStockInsumos={setStockInsumos} salsas={salsas} produccion={produccion} />}
+        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInicial={stockInicial} setStockInicial={setStockInicial} ingresosStock={ingresosStock} setIngresosStock={setIngresosStock} salsas={salsas} produccion={produccion} />}
         {selLocal==="costos"      && <CostosFijosTab costosFijos={costosFijos} setCostosFijos={setCostosFijos} />}
         {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={cookInsumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
         {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
