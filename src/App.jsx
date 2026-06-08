@@ -179,6 +179,31 @@ function calcConsumoProduccion(produccion, salsas) {
   return consumo;
 }
 
+const fmt2 = n => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
+
+// ── Estilos zona-sur para sección Recetas ──
+function useMobile() {
+  const [m, setM] = useState(() => window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+const RIS = { background: "#f4faf4", border: "1px solid #c8e6c9", borderRadius: "6px", color: "#1a2e1a", padding: "7px 9px", fontFamily: "'DM Mono', monospace", fontSize: "12px", outline: "none", boxSizing: "border-box" };
+const RCard = ({ children, style = {} }) => <div style={{ background: "#ffffff", border: "1px solid #d4e8d0", borderRadius: "11px", padding: "18px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", ...style }}>{children}</div>;
+function RStatBox({ label, value, accent }) {
+  const c = accent ? "#1a7a3a" : "#1a2e1a";
+  return (
+    <div style={{ background: accent ? "#e8f5e9" : "#f4faf4", border: `1px solid ${accent ? "#a5d6a7" : "#c8e6c9"}`, borderRadius: "9px", padding: "13px 16px" }}>
+      <div style={{ color: "#5a7a5a", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: "4px" }}>{label}</div>
+      <div style={{ color: c, fontSize: "19px", fontWeight: "700", fontFamily: "'DM Mono', monospace" }}>{value}</div>
+    </div>
+  );
+}
+const RBtn = ({ onClick, children, style = {}, variant = "primary" }) => (
+  <button onClick={onClick} style={{ background: variant === "primary" ? "#2e7d32" : "#e8f5e9", color: variant === "primary" ? "#fff" : "#2e7d32", border: variant === "primary" ? "none" : "1px solid #a5d6a7", borderRadius: "6px", padding: "7px 13px", cursor: "pointer", fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: "700", ...style }}>{children}</button>
+);
+const RX = ({ onClick }) => <button onClick={onClick} style={{ background: "none", border: "none", color: "#c8a0a0", cursor: "pointer", fontSize: "15px", padding: "2px 5px", lineHeight: 1 }}>✕</button>;
+const RH = ({ title }) => <div style={{ display: "flex", alignItems: "center", marginBottom: "13px" }}><span style={{ color: "#1a3a1a", fontSize: "13px", fontWeight: "700", fontFamily: "'DM Mono', monospace" }}>{title}</span></div>;
+
 // ===================== INSUMOS =====================
 function InsumosTab({ insumos, setInsumos }) {
   const [form, setForm] = useState({ nombre: "", unidad: "kg", precio_unidad: "", categoria: "Carnes" });
@@ -229,128 +254,118 @@ function InsumosTab({ insumos, setInsumos }) {
 
 // ===================== SALSAS / RECETAS =====================
 function SalsasTab({ salsas, setSalsas, cookInsumos }) {
+  const isMobile = useMobile();
   const [sel, setSel] = useState(0);
   const [showNew, setShowNew] = useState(false);
   const [nf, setNf] = useState({ nombre: "" });
   const [ni, setNi] = useState({ insumo_id: cookInsumos[0]?.id || "", cantidad: "" });
 
   const salsa = salsas[sel];
-  const costoReceta = salsa ? (salsa.ingredientes||[]).reduce((s, ing) => {
-    const ins = cookInsumos.find(i => i.id === ing.insumo_id);
-    return s + (ins ? ins.precio_unidad * ing.cantidad : 0);
-  }, 0) : 0;
-  const pesoKg = salsa ? calcPesoTotalSalsa(salsa) : 0;
   const esPorUnidad = salsa?.rendTipo === "unidad";
+  const costoReceta = salsa ? salsa.ingredientes.reduce((s, ing) => { const ins = cookInsumos.find(i => i.id === ing.insumo_id); return s + (ins ? ins.precio_unidad * ing.cantidad : 0); }, 0) : 0;
+  const pesoTotalKg = salsa ? calcPesoTotalSalsa(salsa) : 0;
+  const pesoTotalGr = pesoTotalKg * 1000;
   const costoPorBase = salsa ? calcCostoSalsa(salsa, cookInsumos) : 0;
+  const costoPorGr = !esPorUnidad ? costoPorBase / 1000 : 0;
 
-  const addS = () => {
-    if (!nf.nombre) return;
-    setSalsas([...salsas, { id: Date.now(), nombre: nf.nombre, rendTipo: "peso", rendCantidad: 1, ingredientes: [] }]);
-    setSel(salsas.length); setShowNew(false); setNf({ nombre: "" });
-  };
+  const addS = () => { if (!nf.nombre) return; setSalsas([...salsas, { id: Date.now(), nombre: nf.nombre, rendTipo: "peso", rendCantidad: 1, ingredientes: [] }]); setSel(salsas.length); setShowNew(false); setNf({ nombre: "" }); };
   const delS = i => { if (salsas.length <= 1) return; setSalsas(salsas.filter((_, ii) => ii !== i)); setSel(Math.max(0, i - 1)); };
   const updS = (f, v) => setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, [f]: v }));
-  const addI = () => {
-    if (!ni.insumo_id || !ni.cantidad) return;
-    setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: [...(s.ingredientes||[]), { insumo_id: Number(ni.insumo_id), cantidad: Number(ni.cantidad) }] }));
-    setNi({ insumo_id: cookInsumos[0]?.id || "", cantidad: "" });
-  };
+  const addI = () => { if (!ni.insumo_id || !ni.cantidad) return; setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: [...s.ingredientes, { insumo_id: Number(ni.insumo_id), cantidad: Number(ni.cantidad) }] })); setNi({ insumo_id: cookInsumos[0]?.id || "", cantidad: "" }); };
   const delI = idx => setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: s.ingredientes.filter((_, ii) => ii !== idx) }));
   const updI = (idx, f, v) => setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: s.ingredientes.map((ing, ii) => ii !== idx ? ing : { ...ing, [f]: Number(v) }) }));
 
   return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "24px", display: "flex", gap: "20px", alignItems: "flex-start" }}>
-      <div style={{ width: "210px", flexShrink: 0 }}>
-        <div style={{ fontWeight: "700", fontSize: "11px", color: "#888", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recetas</div>
-        {salsas.map((s, i) => (
-          <div key={s.id} style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
-            <button onClick={() => setSel(i)} style={{ flex: 1, padding: "8px 10px", borderRadius: "7px", border: `1px solid ${sel===i?"#1a7a3a":"#ddd"}`, background: sel===i?"#1a7a3a":"#fff", color: sel===i?"#fff":"#333", fontSize: "12px", fontWeight: sel===i?"700":"400", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-              🧪 {s.nombre}
-            </button>
-            {salsas.length > 1 && <button onClick={() => delS(i)} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: "16px", padding: "0 4px" }}>×</button>}
-          </div>
-        ))}
-        {showNew ? (
-          <div style={{ ...S.card, padding: "12px", marginTop: "6px" }}>
-            <input placeholder="Nombre" value={nf.nombre} onChange={e => setNf({...nf, nombre: e.target.value})} style={{ ...S.inp, width: "100%", marginBottom: "8px" }} onKeyDown={e => e.key==="Enter" && addS()} />
-            <div style={{ display: "flex", gap: "4px" }}>
-              <button onClick={addS} style={{ ...S.btn(), flex: 1, padding: "7px" }}>Crear</button>
-              <button onClick={() => setShowNew(false)} style={{ ...S.btn("#888"), padding: "7px 10px" }}>✕</button>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "14px", padding: "20px" }}>
+      {/* Lista de recetas */}
+      <div style={{ ...(isMobile ? { width: "100%" } : { width: "190px", flexShrink: 0, maxHeight: "calc(100vh - 180px)" }), display: "flex", flexDirection: "column" }}>
+        <div style={{ color: "#222", fontSize: "10px", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", marginBottom: "7px", letterSpacing: "0.1em" }}>Recetas</div>
+        <div style={{ ...(isMobile ? { display: "flex", flexDirection: "row", overflowX: "auto", gap: "6px", paddingBottom: "6px" } : { overflowY: "auto", flex: 1, paddingRight: "2px" }) }}>
+          {salsas.map((s, i) => (
+            <div key={s.id} style={{ display: "flex", gap: "4px", marginBottom: isMobile ? 0 : "4px", flexShrink: 0 }}>
+              <button onClick={() => setSel(i)} style={{ flex: 1, background: sel===i ? "#1a7a3a" : "#d4edd9", color: sel===i ? "#d4edd9" : "#aaa", border: `1px solid ${sel===i ? "#1a7a3a" : "#222"}`, borderRadius: "7px", padding: "8px 11px", textAlign: "left", cursor: "pointer", fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: sel===i ? "700" : "400", whiteSpace: "nowrap" }}>🧪 {s.nombre}</button>
+              {salsas.length > 1 && <RX onClick={() => delS(i)} />}
             </div>
-          </div>
+          ))}
+        </div>
+        {showNew ? (
+          <RCard style={{ padding: "11px", marginTop: "5px" }}>
+            <input placeholder="Nombre" value={nf.nombre} onChange={e => setNf({ ...nf, nombre: e.target.value })} style={{ ...RIS, width: "100%", marginBottom: "5px" }} onKeyDown={e => e.key==="Enter" && addS()} />
+            <div style={{ display: "flex", gap: "5px" }}><RBtn onClick={addS} style={{ flex: 1 }}>Crear</RBtn><RBtn onClick={() => setShowNew(false)} variant="ghost" style={{ flex: 1 }}>✕</RBtn></div>
+          </RCard>
         ) : (
-          <button onClick={() => setShowNew(true)} style={{ width: "100%", background: "transparent", color: "#666", border: "1px dashed #ccc", borderRadius: "7px", padding: "8px", cursor: "pointer", fontSize: "12px", marginTop: "4px", fontFamily: "inherit" }}>
-            + Nueva receta
-          </button>
+          <button onClick={() => setShowNew(true)} style={{ width: "100%", background: "transparent", color: "#222", border: "1px dashed #a0c0a0", borderRadius: "7px", padding: "8px", cursor: "pointer", fontFamily: "'DM Mono', monospace", fontSize: "10px", marginTop: "4px" }}>+ Nueva receta</button>
         )}
       </div>
 
+      {/* Detalle de la receta */}
       {salsa && (
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
-            {[
-              { label: "Costo total receta", val: fmt(costoReceta) },
-              esPorUnidad ? { label: "Rinde (unidades)", val: salsa.rendCantidad || 1 } : { label: "Peso total", val: `${Math.round(pesoKg*1000)} gr` },
-              { label: esPorUnidad ? "Costo por unidad" : "Costo por kg", val: fmt(costoPorBase) },
-              esPorUnidad ? { label: "Tipo", val: "Por unidad" } : { label: "Costo por gr", val: `$${(costoPorBase/1000).toFixed(2)}` },
-            ].map(({ label, val }) => (
-              <div key={label} style={{ ...S.card, margin: 0, textAlign: "center" }}>
-                <div style={{ fontSize: "10px", color: "#888", marginBottom: "4px" }}>{label}</div>
-                <div style={{ fontWeight: "700", fontSize: "16px", color: "#1a7a3a" }}>{val}</div>
-              </div>
-            ))}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "11px", minWidth: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: "9px" }}>
+            <RStatBox label="Costo total receta" value={fmt(costoReceta)} />
+            {esPorUnidad ? <RStatBox label="Rinde (unidades)" value={salsa.rendCantidad || 1} /> : <RStatBox label="Peso total" value={`${Math.round(pesoTotalGr)} gr`} />}
+            {esPorUnidad ? <RStatBox label="Costo por unidad" value={fmt(costoPorBase)} accent /> : <RStatBox label="Costo por kg" value={fmt(costoPorBase)} />}
+            {esPorUnidad ? <RStatBox label="Tipo" value="Por unidad" accent /> : <RStatBox label="Costo por gr" value={`$${costoPorGr.toFixed(2)}`} accent />}
           </div>
 
-          <div style={{ ...S.card, display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <label style={S.label}>Nombre</label>
-              <input value={salsa.nombre} onChange={e => updS("nombre", e.target.value)} style={{ ...S.inp, width: "100%" }} />
-            </div>
-            <div>
-              <label style={S.label}>Tipo de rendimiento</label>
-              <div style={{ display: "flex", gap: "6px" }}>
-                {["peso","unidad"].map(t => (
-                  <button key={t} onClick={() => updS("rendTipo", t)} style={{ ...S.btn((salsa.rendTipo||"peso")===t?"#1a7a3a":"#aaa"), padding: "7px 14px", fontSize: "12px", textTransform: "capitalize" }}>{t}</button>
-                ))}
+          <RCard>
+            <div style={{ display: "flex", gap: "11px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <div style={{ color: "#5a8a6e", fontSize: "10px", fontFamily: "'DM Mono', monospace", marginBottom: "4px" }}>NOMBRE</div>
+                <input value={salsa.nombre} onChange={e => updS("nombre", e.target.value)} style={{ ...RIS, width: "100%" }} />
               </div>
-            </div>
-            {esPorUnidad && (
-              <div>
-                <label style={S.label}>Rinde (unidades)</label>
-                <input type="number" min="1" value={salsa.rendCantidad||1} onChange={e => updS("rendCantidad", Number(e.target.value))} style={{ ...S.inp, width: "100px" }} />
+              <div style={{ width: 160 }}>
+                <div style={{ color: "#5a8a6e", fontSize: "10px", fontFamily: "'DM Mono', monospace", marginBottom: "4px" }}>TIPO DE RENDIMIENTO</div>
+                <div style={{ display: "flex", gap: "5px" }}>
+                  {["peso", "unidad"].map(t => (
+                    <button key={t} onClick={() => updS("rendTipo", t)} style={{ flex: 1, padding: "7px 6px", borderRadius: "6px", border: "none", background: (salsa.rendTipo||"peso")===t ? "#2e7d32" : "#e8f5e9", color: (salsa.rendTipo||"peso")===t ? "#fff" : "#2e7d32", fontFamily: "'DM Mono', monospace", fontSize: "10px", fontWeight: "700", cursor: "pointer", textTransform: "uppercase" }}>{t}</button>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
+              {esPorUnidad && (
+                <div style={{ width: 130 }}>
+                  <div style={{ color: "#5a8a6e", fontSize: "10px", fontFamily: "'DM Mono', monospace", marginBottom: "4px" }}>RINDE (unidades)</div>
+                  <input type="number" min="1" value={salsa.rendCantidad || 1} onChange={e => updS("rendCantidad", Number(e.target.value))} style={{ ...RIS, width: "100%" }} />
+                </div>
+              )}
+              {!esPorUnidad && (
+                <div style={{ width: 200 }}>
+                  <div style={{ color: "#5a8a6e", fontSize: "10px", fontFamily: "'DM Mono', monospace", marginBottom: "4px" }}>PESO TOTAL: {Math.round(pesoTotalGr)}gr — ${costoPorGr.toFixed(2)}/gr</div>
+                  <div style={{ ...RIS, width: "100%", color: "#1a7a3a", fontWeight: "700", padding: "7px 9px" }}>{fmt(costoPorBase)} por kg</div>
+                </div>
+              )}
+            </div>
+          </RCard>
 
-          <div style={S.card}>
-            <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Ingredientes</div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Unidad</th><th style={S.th}>Cantidad</th><th style={S.th}>Costo</th><th style={S.th}></th></tr></thead>
-              <tbody>
-                {(salsa.ingredientes||[]).map((ing, idx) => {
-                  const ins = cookInsumos.find(i => i.id === ing.insumo_id);
-                  return (
-                    <tr key={idx}>
-                      <td style={S.td}><select value={ing.insumo_id} onChange={e => updI(idx,"insumo_id",e.target.value)} style={{...S.inp, width:"100%"}}>{cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}</select></td>
-                      <td style={S.td}><span style={{ color: "#888", fontSize: "12px" }}>{ins?.unidad||"-"}</span></td>
-                      <td style={S.td}><input type="number" step="0.001" value={ing.cantidad} onChange={e => updI(idx,"cantidad",e.target.value)} style={{...S.inp, width:"90px"}} /></td>
-                      <td style={S.td}><strong>{fmt(ins ? ins.precio_unidad * ing.cantidad : 0)}</strong></td>
-                      <td style={S.td}><button onClick={() => delI(idx)} style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:"16px"}}>×</button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div style={{ display: "flex", gap: "8px", marginTop: "10px", padding: "10px", background: "#f9f9f9", borderRadius: "7px", flexWrap: "wrap" }}>
-              <select value={ni.insumo_id} onChange={e => setNi({...ni, insumo_id: e.target.value})} style={{...S.inp, flex:"1 1 140px"}}>{cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad})</option>)}</select>
-              <input type="number" step="0.001" placeholder="Cantidad" value={ni.cantidad} onChange={e => setNi({...ni, cantidad: e.target.value})} style={{...S.inp, width:"100px"}} />
-              <button onClick={addI} style={S.btn()}>+ Agregar</button>
+          <RCard>
+            <RH title="Ingredientes de la salsa" />
+            <div style={{ overflowX: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px auto", gap: "7px", padding: "3px 0 7px", borderBottom: "1px solid #d4edd9", minWidth: 380 }}>
+                {["Insumo", "Unidad", "Cantidad", "Costo", ""].map((h, i) => <div key={i} style={{ color: "#1a5c2a", fontSize: "10px", fontFamily: "'DM Mono', monospace", textTransform: "uppercase" }}>{h}</div>)}
+              </div>
+              {salsa.ingredientes.map((ing, idx) => {
+                const ins = cookInsumos.find(i => i.id === ing.insumo_id);
+                return (
+                  <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 80px auto", gap: "7px", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #e0f0e6", minWidth: 380 }}>
+                    <select value={ing.insumo_id} onChange={e => updI(idx, "insumo_id", e.target.value)} style={{ ...RIS, fontSize: "11px" }}>{cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}</select>
+                    <span style={{ color: "#222", fontSize: "11px", fontFamily: "'DM Mono', monospace" }}>{ins?.unidad || "-"}</span>
+                    <input type="number" step="0.001" value={ing.cantidad} onChange={e => updI(idx, "cantidad", e.target.value)} style={{ ...RIS, fontSize: "12px" }} />
+                    <span style={{ color: "#1a7a3a", fontFamily: "'DM Mono', monospace", fontSize: "12px" }}>{fmt2(ins ? ins.precio_unidad * ing.cantidad : 0)}</span>
+                    <RX onClick={() => delI(idx)} />
+                  </div>
+                );
+              })}
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0 0", marginTop: "8px", borderTop: "2px solid #eee" }}>
-              <span style={{ fontWeight: "700", fontSize: "13px" }}>TOTAL RECETA</span>
-              <span style={{ fontWeight: "700", fontSize: "15px", color: "#c0392b" }}>{fmt(costoReceta)}</span>
+            <div style={{ display: "flex", gap: "7px", marginTop: "9px", padding: "9px", background: "#f0faf4", borderRadius: "7px", flexWrap: "wrap" }}>
+              <select value={ni.insumo_id} onChange={e => setNi({ ...ni, insumo_id: e.target.value })} style={{ ...RIS, flex: "1 1 140px" }}>{cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad})</option>)}</select>
+              <input type="number" step="0.001" placeholder="Cantidad" value={ni.cantidad} onChange={e => setNi({ ...ni, cantidad: e.target.value })} style={{ ...RIS, width: "95px" }} />
+              <RBtn onClick={addI}>+ Agregar</RBtn>
             </div>
-          </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "9px 0 0", marginTop: "5px", borderTop: "2px solid #b8dfc4" }}>
+              <span style={{ color: "#222", fontFamily: "'DM Mono', monospace", fontSize: "11px" }}>TOTAL RECETA</span>
+              <span style={{ color: "#cc4400", fontFamily: "'DM Mono', monospace", fontSize: "14px", fontWeight: "700" }}>{fmt(costoReceta)}</span>
+            </div>
+          </RCard>
         </div>
       )}
     </div>
