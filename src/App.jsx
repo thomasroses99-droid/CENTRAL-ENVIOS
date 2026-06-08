@@ -79,6 +79,77 @@ function Tag({ children, color="#1a7a3a" }) {
   return <span style={{ background: color+"22", color, fontSize: "10px", fontWeight: "700", borderRadius: "4px", padding: "2px 7px" }}>{children}</span>;
 }
 
+// ===================== RECETAS DATA =====================
+const initialCookInsumos = [
+  { id: 1,  nombre: "Carne",            unidad: "kg",    precio_unidad: 15100,   categoria: "Carnes" },
+  { id: 2,  nombre: "Panceta",          unidad: "kg",    precio_unidad: 19154,   categoria: "Carnes" },
+  { id: 3,  nombre: "Veggies",          unidad: "kg",    precio_unidad: 1170,    categoria: "Carnes" },
+  { id: 4,  nombre: "Medallon pollo",   unidad: "kg",    precio_unidad: 7000,    categoria: "Carnes" },
+  { id: 5,  nombre: "Cheddar",          unidad: "kg",    precio_unidad: 26138,   categoria: "Lacteos" },
+  { id: 6,  nombre: "Cheddar Liquido",  unidad: "kg",    precio_unidad: 31553,   categoria: "Lacteos" },
+  { id: 7,  nombre: "Crema de leche",   unidad: "kg",    precio_unidad: 2859,    categoria: "Lacteos" },
+  { id: 8,  nombre: "Leche",            unidad: "kg",    precio_unidad: 1810,    categoria: "Lacteos" },
+  { id: 9,  nombre: "Roquefort",        unidad: "kg",    precio_unidad: 12993,   categoria: "Lacteos" },
+  { id: 10, nombre: "Casancrem",        unidad: "kg",    precio_unidad: 4752,    categoria: "Lacteos" },
+  { id: 11, nombre: "Manteca",          unidad: "kg",    precio_unidad: 12417,   categoria: "Lacteos" },
+  { id: 25, nombre: "Mayonesa",         unidad: "kg",    precio_unidad: 11522,   categoria: "Salsas base" },
+  { id: 26, nombre: "Ketchup",          unidad: "kg",    precio_unidad: 11761,   categoria: "Salsas base" },
+  { id: 27, nombre: "Barbacoa",         unidad: "kg",    precio_unidad: 12505,   categoria: "Salsas base" },
+  { id: 28, nombre: "Savora",           unidad: "kg",    precio_unidad: 8528,    categoria: "Salsas base" },
+  { id: 29, nombre: "Relish",           unidad: "kg",    precio_unidad: 0,       categoria: "Salsas base" },
+  { id: 30, nombre: "Mostaza de Dijon", unidad: "kg",    precio_unidad: 0,       categoria: "Salsas base" },
+  { id: 31, nombre: "Mostaza",          unidad: "kg",    precio_unidad: 0,       categoria: "Salsas base" },
+  { id: 32, nombre: "Salsa Inglesa",    unidad: "kg",    precio_unidad: 0,       categoria: "Salsas base" },
+  { id: 23, nombre: "Aceite Girasol",   unidad: "litro", precio_unidad: 3052,    categoria: "Aceites" },
+  { id: 24, nombre: "Aceite Oliva",     unidad: "litro", precio_unidad: 4600,    categoria: "Aceites" },
+  { id: 12, nombre: "Ajo en Polvo",     unidad: "kg",    precio_unidad: 16438,   categoria: "Especias" },
+  { id: 13, nombre: "Pimenton",         unidad: "kg",    precio_unidad: 16325,   categoria: "Especias" },
+  { id: 14, nombre: "Sal",              unidad: "kg",    precio_unidad: 1796,    categoria: "Especias" },
+  { id: 15, nombre: "Azucar",           unidad: "kg",    precio_unidad: 1384,    categoria: "Especias" },
+  { id: 16, nombre: "Humo Liquido",     unidad: "litro", precio_unidad: 21172,   categoria: "Especias" },
+  { id: 17, nombre: "Alicante",         unidad: "kg",    precio_unidad: 3107,    categoria: "Especias" },
+  { id: 18, nombre: "Miel",             unidad: "kg",    precio_unidad: 6425,    categoria: "Especias" },
+  { id: 19, nombre: "Vinagre",          unidad: "litro", precio_unidad: 1008,    categoria: "Especias" },
+  { id: 20, nombre: "Pepinos",          unidad: "kg",    precio_unidad: 19405,   categoria: "Especias" },
+  { id: 21, nombre: "Minerva",          unidad: "litro", precio_unidad: 2551,    categoria: "Especias" },
+  { id: 37, nombre: "Cebolla",          unidad: "kg",    precio_unidad: 18000,   categoria: "Especias" },
+  { id: 39, nombre: "Perejil",          unidad: "kg",    precio_unidad: 0,       categoria: "Especias" },
+  { id: 40, nombre: "Ciboulette",       unidad: "kg",    precio_unidad: 0,       categoria: "Especias" },
+  { id: 41, nombre: "Ajo picado",       unidad: "kg",    precio_unidad: 0,       categoria: "Especias" },
+  { id: 42, nombre: "Aji Molido",       unidad: "kg",    precio_unidad: 0,       categoria: "Especias" },
+  { id: 43, nombre: "Jugo de limon",    unidad: "kg",    precio_unidad: 0,       categoria: "Especias" },
+  { id: 44, nombre: "Cebolla picada",   unidad: "kg",    precio_unidad: 18000,   categoria: "Especias" },
+  { id: 45, nombre: "Pimienta",         unidad: "kg",    precio_unidad: 0,       categoria: "Especias" },
+];
+
+const initialSalsasData = [
+  { id:1,  nombre:"Salsa Stacker",          rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:25,cantidad:0.300},{insumo_id:26,cantidad:0.030},{insumo_id:29,cantidad:0.040},{insumo_id:19,cantidad:0.040},{insumo_id:15,cantidad:0.005},{insumo_id:13,cantidad:0.005},{insumo_id:45,cantidad:0.0005},{insumo_id:17,cantidad:0.003},{insumo_id:16,cantidad:0.005}] },
+  { id:2,  nombre:"Salsa Cheese",           rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:8,cantidad:0.100},{insumo_id:30,cantidad:0.010},{insumo_id:26,cantidad:0.010},{insumo_id:11,cantidad:0.100},{insumo_id:23,cantidad:0.100},{insumo_id:14,cantidad:0.001},{insumo_id:12,cantidad:0.001},{insumo_id:45,cantidad:0.0005},{insumo_id:17,cantidad:0.003},{insumo_id:19,cantidad:0.015}] },
+  { id:3,  nombre:"Salsa Classic",          rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:7,cantidad:0.100},{insumo_id:25,cantidad:0.200},{insumo_id:19,cantidad:0.020},{insumo_id:30,cantidad:0.005},{insumo_id:18,cantidad:0.015},{insumo_id:45,cantidad:0.0005},{insumo_id:14,cantidad:0.001},{insumo_id:13,cantidad:0.001},{insumo_id:17,cantidad:0.003}] },
+  { id:4,  nombre:"Salsa Cowboy",           rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:11,cantidad:0.240},{insumo_id:39,cantidad:0.010},{insumo_id:40,cantidad:0.010},{insumo_id:41,cantidad:0.006},{insumo_id:19,cantidad:0.030},{insumo_id:13,cantidad:0.005},{insumo_id:45,cantidad:0.001},{insumo_id:42,cantidad:0.005},{insumo_id:32,cantidad:0.015},{insumo_id:30,cantidad:0.010},{insumo_id:10,cantidad:0.200},{insumo_id:18,cantidad:0.010},{insumo_id:23,cantidad:0.100},{insumo_id:8,cantidad:0.050}] },
+  { id:5,  nombre:"Salsa Smokey",           rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:27,cantidad:0.240},{insumo_id:18,cantidad:0.080},{insumo_id:12,cantidad:0.005},{insumo_id:16,cantidad:0.005},{insumo_id:45,cantidad:0.005},{insumo_id:13,cantidad:0.005}] },
+  { id:6,  nombre:"Salsa 1967",             rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:25,cantidad:0.480},{insumo_id:31,cantidad:0.030},{insumo_id:26,cantidad:0.120},{insumo_id:15,cantidad:0.030},{insumo_id:19,cantidad:0.030},{insumo_id:29,cantidad:0.045}] },
+  { id:7,  nombre:"Salsa Cheesebacon",      rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:10,cantidad:0.300},{insumo_id:2,cantidad:0.200},{insumo_id:8,cantidad:0.150},{insumo_id:30,cantidad:0.015},{insumo_id:19,cantidad:0.015},{insumo_id:45,cantidad:0.0005},{insumo_id:17,cantidad:0.003},{insumo_id:18,cantidad:0.010},{insumo_id:16,cantidad:0.002},{insumo_id:40,cantidad:0.015}] },
+  { id:8,  nombre:"Salsa Ruby y Crispy Garlic", rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:10,cantidad:0.200},{insumo_id:8,cantidad:0.199},{insumo_id:19,cantidad:0.015},{insumo_id:30,cantidad:0.015},{insumo_id:14,cantidad:0.001},{insumo_id:45,cantidad:0.0005},{insumo_id:41,cantidad:0.005},{insumo_id:17,cantidad:0.003}] },
+  { id:9,  nombre:"Salsa Blue",             rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:25,cantidad:0.240},{insumo_id:30,cantidad:0.060},{insumo_id:31,cantidad:0.060},{insumo_id:18,cantidad:0.120},{insumo_id:45,cantidad:0.0005},{insumo_id:42,cantidad:0.003},{insumo_id:12,cantidad:0.001},{insumo_id:17,cantidad:0.003}] },
+  { id:10, nombre:"Salsa Biggie",           rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:25,cantidad:0.520},{insumo_id:30,cantidad:0.045},{insumo_id:12,cantidad:0.001},{insumo_id:44,cantidad:0.015},{insumo_id:45,cantidad:0.0005},{insumo_id:13,cantidad:0.001},{insumo_id:17,cantidad:0.003},{insumo_id:43,cantidad:0.015}] },
+  { id:11, nombre:"Cebolla crispy",         rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:37,cantidad:0.5},{insumo_id:23,cantidad:0.5},{insumo_id:14,cantidad:0.005},{insumo_id:45,cantidad:0.002}] },
+  { id:12, nombre:"Cebolla caramelizada",   rendTipo:"peso", rendCantidad:1, ingredientes:[{insumo_id:37,cantidad:0.5},{insumo_id:11,cantidad:0.05},{insumo_id:15,cantidad:0.03},{insumo_id:14,cantidad:0.003}] },
+];
+
+function calcPesoTotalSalsa(salsa) {
+  return (salsa?.ingredientes || []).reduce((s, ing) => s + ing.cantidad, 0);
+}
+function calcCostoSalsa(salsa, insumos) {
+  const total = (salsa?.ingredientes || []).reduce((s, ing) => {
+    const ins = insumos.find(i => i.id === ing.insumo_id);
+    return s + (ins ? ins.precio_unidad * ing.cantidad : 0);
+  }, 0);
+  if (salsa?.rendTipo === "unidad") return total / (salsa.rendCantidad || 1);
+  const kg = calcPesoTotalSalsa(salsa);
+  return kg > 0 ? total / kg : 0;
+}
+
 // ===================== INSUMOS =====================
 function InsumosTab({ insumos, setInsumos }) {
   const [form, setForm] = useState({ nombre: "", unidad: "kg", precio_unidad: "", categoria: "Carnes" });
@@ -123,6 +194,267 @@ function InsumosTab({ insumos, setInsumos }) {
         </div>
       ))}
       {insumos.length === 0 && <div style={{...S.card, color:"#888", textAlign:"center"}}>No hay insumos cargados todavía.</div>}
+    </div>
+  );
+}
+
+// ===================== SALSAS / RECETAS =====================
+function SalsasTab({ salsas, setSalsas, cookInsumos }) {
+  const [sel, setSel] = useState(0);
+  const [showNew, setShowNew] = useState(false);
+  const [nf, setNf] = useState({ nombre: "" });
+  const [ni, setNi] = useState({ insumo_id: cookInsumos[0]?.id || "", cantidad: "" });
+
+  const salsa = salsas[sel];
+  const costoReceta = salsa ? (salsa.ingredientes||[]).reduce((s, ing) => {
+    const ins = cookInsumos.find(i => i.id === ing.insumo_id);
+    return s + (ins ? ins.precio_unidad * ing.cantidad : 0);
+  }, 0) : 0;
+  const pesoKg = salsa ? calcPesoTotalSalsa(salsa) : 0;
+  const esPorUnidad = salsa?.rendTipo === "unidad";
+  const costoPorBase = salsa ? calcCostoSalsa(salsa, cookInsumos) : 0;
+
+  const addS = () => {
+    if (!nf.nombre) return;
+    setSalsas([...salsas, { id: Date.now(), nombre: nf.nombre, rendTipo: "peso", rendCantidad: 1, ingredientes: [] }]);
+    setSel(salsas.length); setShowNew(false); setNf({ nombre: "" });
+  };
+  const delS = i => { if (salsas.length <= 1) return; setSalsas(salsas.filter((_, ii) => ii !== i)); setSel(Math.max(0, i - 1)); };
+  const updS = (f, v) => setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, [f]: v }));
+  const addI = () => {
+    if (!ni.insumo_id || !ni.cantidad) return;
+    setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: [...(s.ingredientes||[]), { insumo_id: Number(ni.insumo_id), cantidad: Number(ni.cantidad) }] }));
+    setNi({ insumo_id: cookInsumos[0]?.id || "", cantidad: "" });
+  };
+  const delI = idx => setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: s.ingredientes.filter((_, ii) => ii !== idx) }));
+  const updI = (idx, f, v) => setSalsas(salsas.map((s, i) => i !== sel ? s : { ...s, ingredientes: s.ingredientes.map((ing, ii) => ii !== idx ? ing : { ...ing, [f]: Number(v) }) }));
+
+  return (
+    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "24px", display: "flex", gap: "20px", alignItems: "flex-start" }}>
+      <div style={{ width: "210px", flexShrink: 0 }}>
+        <div style={{ fontWeight: "700", fontSize: "11px", color: "#888", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recetas</div>
+        {salsas.map((s, i) => (
+          <div key={s.id} style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
+            <button onClick={() => setSel(i)} style={{ flex: 1, padding: "8px 10px", borderRadius: "7px", border: `1px solid ${sel===i?"#1a7a3a":"#ddd"}`, background: sel===i?"#1a7a3a":"#fff", color: sel===i?"#fff":"#333", fontSize: "12px", fontWeight: sel===i?"700":"400", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+              🧪 {s.nombre}
+            </button>
+            {salsas.length > 1 && <button onClick={() => delS(i)} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: "16px", padding: "0 4px" }}>×</button>}
+          </div>
+        ))}
+        {showNew ? (
+          <div style={{ ...S.card, padding: "12px", marginTop: "6px" }}>
+            <input placeholder="Nombre" value={nf.nombre} onChange={e => setNf({...nf, nombre: e.target.value})} style={{ ...S.inp, width: "100%", marginBottom: "8px" }} onKeyDown={e => e.key==="Enter" && addS()} />
+            <div style={{ display: "flex", gap: "4px" }}>
+              <button onClick={addS} style={{ ...S.btn(), flex: 1, padding: "7px" }}>Crear</button>
+              <button onClick={() => setShowNew(false)} style={{ ...S.btn("#888"), padding: "7px 10px" }}>✕</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setShowNew(true)} style={{ width: "100%", background: "transparent", color: "#666", border: "1px dashed #ccc", borderRadius: "7px", padding: "8px", cursor: "pointer", fontSize: "12px", marginTop: "4px", fontFamily: "inherit" }}>
+            + Nueva receta
+          </button>
+        )}
+      </div>
+
+      {salsa && (
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+            {[
+              { label: "Costo total receta", val: fmt(costoReceta) },
+              esPorUnidad ? { label: "Rinde (unidades)", val: salsa.rendCantidad || 1 } : { label: "Peso total", val: `${Math.round(pesoKg*1000)} gr` },
+              { label: esPorUnidad ? "Costo por unidad" : "Costo por kg", val: fmt(costoPorBase) },
+              esPorUnidad ? { label: "Tipo", val: "Por unidad" } : { label: "Costo por gr", val: `$${(costoPorBase/1000).toFixed(2)}` },
+            ].map(({ label, val }) => (
+              <div key={label} style={{ ...S.card, margin: 0, textAlign: "center" }}>
+                <div style={{ fontSize: "10px", color: "#888", marginBottom: "4px" }}>{label}</div>
+                <div style={{ fontWeight: "700", fontSize: "16px", color: "#1a7a3a" }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ ...S.card, display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={S.label}>Nombre</label>
+              <input value={salsa.nombre} onChange={e => updS("nombre", e.target.value)} style={{ ...S.inp, width: "100%" }} />
+            </div>
+            <div>
+              <label style={S.label}>Tipo de rendimiento</label>
+              <div style={{ display: "flex", gap: "6px" }}>
+                {["peso","unidad"].map(t => (
+                  <button key={t} onClick={() => updS("rendTipo", t)} style={{ ...S.btn((salsa.rendTipo||"peso")===t?"#1a7a3a":"#aaa"), padding: "7px 14px", fontSize: "12px", textTransform: "capitalize" }}>{t}</button>
+                ))}
+              </div>
+            </div>
+            {esPorUnidad && (
+              <div>
+                <label style={S.label}>Rinde (unidades)</label>
+                <input type="number" min="1" value={salsa.rendCantidad||1} onChange={e => updS("rendCantidad", Number(e.target.value))} style={{ ...S.inp, width: "100px" }} />
+              </div>
+            )}
+          </div>
+
+          <div style={S.card}>
+            <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Ingredientes</div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Unidad</th><th style={S.th}>Cantidad</th><th style={S.th}>Costo</th><th style={S.th}></th></tr></thead>
+              <tbody>
+                {(salsa.ingredientes||[]).map((ing, idx) => {
+                  const ins = cookInsumos.find(i => i.id === ing.insumo_id);
+                  return (
+                    <tr key={idx}>
+                      <td style={S.td}><select value={ing.insumo_id} onChange={e => updI(idx,"insumo_id",e.target.value)} style={{...S.inp, width:"100%"}}>{cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}</select></td>
+                      <td style={S.td}><span style={{ color: "#888", fontSize: "12px" }}>{ins?.unidad||"-"}</span></td>
+                      <td style={S.td}><input type="number" step="0.001" value={ing.cantidad} onChange={e => updI(idx,"cantidad",e.target.value)} style={{...S.inp, width:"90px"}} /></td>
+                      <td style={S.td}><strong>{fmt(ins ? ins.precio_unidad * ing.cantidad : 0)}</strong></td>
+                      <td style={S.td}><button onClick={() => delI(idx)} style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:"16px"}}>×</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div style={{ display: "flex", gap: "8px", marginTop: "10px", padding: "10px", background: "#f9f9f9", borderRadius: "7px", flexWrap: "wrap" }}>
+              <select value={ni.insumo_id} onChange={e => setNi({...ni, insumo_id: e.target.value})} style={{...S.inp, flex:"1 1 140px"}}>{cookInsumos.map(i => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad})</option>)}</select>
+              <input type="number" step="0.001" placeholder="Cantidad" value={ni.cantidad} onChange={e => setNi({...ni, cantidad: e.target.value})} style={{...S.inp, width:"100px"}} />
+              <button onClick={addI} style={S.btn()}>+ Agregar</button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0 0", marginTop: "8px", borderTop: "2px solid #eee" }}>
+              <span style={{ fontWeight: "700", fontSize: "13px" }}>TOTAL RECETA</span>
+              <span style={{ fontWeight: "700", fontSize: "15px", color: "#c0392b" }}>{fmt(costoReceta)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================== PRODUCCION =====================
+function ProduccionTab({ salsas, cookInsumos, produccion, setProduccion, locales }) {
+  const [selSalsa, setSelSalsa] = useState(salsas[0]?.id || "");
+  const [cantGr, setCantGr] = useState("");
+  const [fecha, setFecha] = useState(today());
+  const [nota, setNota] = useState("");
+  const [despSelSalsa, setDespSelSalsa] = useState(salsas[0]?.id || "");
+  const [despCant, setDespCant] = useState("");
+  const [despLocal, setDespLocal] = useState(locales[0]?.id || "");
+  const [despFecha, setDespFecha] = useState(today());
+  const [despNota, setDespNota] = useState("");
+  const [histExpanded, setHistExpanded] = useState(false);
+
+  const fmtFecha = iso => { try { const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; } catch { return iso; } };
+  const fmtGr = kg => { const gr = Math.round(kg * 1000); return gr >= 1000 ? `${(gr/1000).toFixed(2)} kg` : `${gr} gr`; };
+
+  const stockPorReceta = salsas.map(s => {
+    const producidoKg = (produccion||[]).filter(p => p.salsa_id===s.id && p.tipo!=="despacho").reduce((a,p) => a+p.cantidadKg, 0);
+    const despachado  = (produccion||[]).filter(p => p.salsa_id===s.id && p.tipo==="despacho").reduce((a,p) => a+p.cantidadKg, 0);
+    const actualKg = producidoKg - despachado;
+    const esPorUnidad = s.rendTipo === "unidad";
+    const color = producidoKg===0 && despachado===0 ? "#aaa" : actualKg < 0 ? "#c0392b" : actualKg < (esPorUnidad ? 2 : 0.2) ? "#e67e22" : "#1a7a3a";
+    return { ...s, producidoKg, despachado, actualKg, color, esPorUnidad };
+  });
+
+  const salsaSel = salsas.find(s => s.id === Number(selSalsa));
+  const esPorUnidad = salsaSel?.rendTipo === "unidad";
+
+  const registrar = () => {
+    if (!selSalsa || !cantGr || Number(cantGr) <= 0) return;
+    setProduccion(prev => [{ id: Date.now(), fecha, salsa_id: Number(selSalsa), tipo: "produccion", cantidadKg: esPorUnidad ? Number(cantGr) : Number(cantGr)/1000, nota: nota.trim() }, ...(prev||[])]);
+    setCantGr(""); setNota("");
+  };
+
+  const despSalsaSel = salsas.find(s => s.id === Number(despSelSalsa));
+  const despEsPorUnidad = despSalsaSel?.rendTipo === "unidad";
+
+  const despachar = () => {
+    if (!despSelSalsa || !despCant || Number(despCant) <= 0 || !despLocal) return;
+    const local = locales.find(l => l.id === despLocal);
+    setProduccion(prev => [{ id: Date.now(), fecha: despFecha, salsa_id: Number(despSelSalsa), tipo: "despacho", cantidadKg: despEsPorUnidad ? Number(despCant) : Number(despCant)/1000, local_id: despLocal, local_nombre: local?.nombre || "", nota: despNota.trim() }, ...(prev||[])]);
+    setDespCant(""); setDespNota("");
+  };
+
+  return (
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+      <h2 style={{ margin: "0 0 20px", color: "#1a2e1a" }}>Producción de recetas</h2>
+
+      <div style={S.card}>
+        <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Stock actual por receta</div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr>{["Receta","Producido","Despachado","Stock actual"].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+          <tbody>
+            {stockPorReceta.map((s, i) => (
+              <tr key={s.id} style={{ background: i%2===0?"#fafafa":"#fff" }}>
+                <td style={S.td}>🧪 {s.nombre}</td>
+                <td style={{ ...S.td, color: s.producidoKg>0?"#1a7a3a":"#bbb", fontWeight:"700" }}>
+                  {s.producidoKg > 0 ? (s.esPorUnidad ? `${Math.round(s.producidoKg)} u` : fmtGr(s.producidoKg)) : "—"}
+                </td>
+                <td style={{ ...S.td, color: s.despachado>0?"#c0392b":"#bbb" }}>
+                  {s.despachado > 0 ? (s.esPorUnidad ? `${Math.round(s.despachado)} u` : fmtGr(s.despachado)) : "—"}
+                </td>
+                <td style={{ ...S.td, fontWeight:"700", color: s.color }}>
+                  {s.producidoKg===0&&s.despachado===0 ? "—" : s.esPorUnidad ? `${Math.round(s.actualKg)} u` : fmtGr(s.actualKg)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={S.card}>
+        <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>+ Registrar producción</div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div><label style={S.label}>Fecha</label><input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={S.inp} /></div>
+          <div style={{ flex:"1 1 160px" }}><label style={S.label}>Receta</label><select value={selSalsa} onChange={e=>setSelSalsa(e.target.value)} style={{...S.inp,width:"100%"}}>{salsas.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div>
+          <div><label style={S.label}>{esPorUnidad?"Unidades producidas":"Gramos producidos"}</label><input type="number" min="1" placeholder={esPorUnidad?"10":"500"} value={cantGr} onChange={e=>setCantGr(e.target.value)} style={{...S.inp,width:"130px"}} /></div>
+          <div style={{ flex:"2 1 160px" }}><label style={S.label}>Nota (opcional)</label><input value={nota} onChange={e=>setNota(e.target.value)} placeholder="Ej: producción del día" style={{...S.inp,width:"100%"}} /></div>
+          <button onClick={registrar} style={S.btn()}>+ Registrar</button>
+        </div>
+      </div>
+
+      <div style={{ ...S.card, borderLeft: "4px solid #e67e22" }}>
+        <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px", color: "#e67e22" }}>📦 Despachar a local</div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div><label style={S.label}>Fecha</label><input type="date" value={despFecha} onChange={e=>setDespFecha(e.target.value)} style={S.inp} /></div>
+          <div style={{ flex:"1 1 140px" }}><label style={S.label}>Receta</label><select value={despSelSalsa} onChange={e=>setDespSelSalsa(e.target.value)} style={{...S.inp,width:"100%"}}>{salsas.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div>
+          <div style={{ flex:"1 1 130px" }}><label style={S.label}>Local destino</label><select value={despLocal} onChange={e=>setDespLocal(e.target.value)} style={{...S.inp,width:"100%"}}>{locales.map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}</select></div>
+          <div><label style={S.label}>{despEsPorUnidad?"Unidades":"Gramos"}</label><input type="number" min="1" placeholder={despEsPorUnidad?"10":"500"} value={despCant} onChange={e=>setDespCant(e.target.value)} style={{...S.inp,width:"110px"}} /></div>
+          <div style={{ flex:"2 1 130px" }}><label style={S.label}>Nota (opcional)</label><input value={despNota} onChange={e=>setDespNota(e.target.value)} placeholder="Ej: semana 12" style={{...S.inp,width:"100%"}} /></div>
+          <button onClick={despachar} style={S.btn("#e67e22")}>📦 Despachar</button>
+        </div>
+        {locales.length === 0 && <div style={{ marginTop: "10px", fontSize: "12px", color: "#e67e22" }}>⚠ Agregá locales primero en "Locales".</div>}
+      </div>
+
+      {(produccion||[]).length > 0 && (
+        <div style={S.card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setHistExpanded(v=>!v)}>
+            <div style={{ fontWeight: "700", fontSize: "13px" }}>Historial ({(produccion||[]).length})</div>
+            <span style={{ fontSize: "12px", color: "#888" }}>{histExpanded ? "▲ Ocultar" : "▼ Ver"}</span>
+          </div>
+          {histExpanded && (
+            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              {(produccion||[]).slice(0,60).map(p => {
+                const salsa = salsas.find(s => s.id === p.salsa_id);
+                const esDespacho = p.tipo === "despacho";
+                const porUnidad = salsa?.rendTipo === "unidad";
+                const cantDisplay = porUnidad ? `${Math.round(p.cantidadKg)} u` : fmtGr(p.cantidadKg);
+                return (
+                  <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: "7px", background: esDespacho?"#fff8f0":"#f0faf4", borderLeft: `3px solid ${esDespacho?"#e67e22":"#27ae60"}` }}>
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: "700", fontSize: "12px" }}>{fmtFecha(p.fecha)}</span>
+                      <span style={{ fontSize: "12px" }}>🧪 {salsa?.nombre || "?"}</span>
+                      {esDespacho && <Tag color="#e67e22">→ {p.local_nombre}</Tag>}
+                      {p.nota && <span style={{ fontSize: "11px", color: "#888" }}>{p.nota}</span>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{ fontWeight: "700", fontSize: "12px", color: esDespacho?"#e67e22":"#1a7a3a" }}>{esDespacho?"-":"+"}{cantDisplay}</span>
+                      <button onClick={() => { if(confirm("¿Eliminar?")) setProduccion(prev=>prev.filter(x=>x.id!==p.id)); }} style={{ background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:"14px",padding:"0 4px" }}>×</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -485,13 +817,16 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; } });
   useEffect(() => { onFbConnected = setFbOk; }, []);
 
-  const [locales,   setLocales]   = usePersisted("ce-locales",  INITIAL_LOCALES);
-  const [insumos,   setInsumos]   = usePersisted("ce-insumos",  []);
-  const [allEnvios, setAllEnvios] = usePersisted("ce-envios",   {});
-  const [usuarios,  setUsuarios]  = usePersisted("ce-users",    []);
+  const [locales,      setLocales]      = usePersisted("ce-locales",      INITIAL_LOCALES);
+  const [insumos,      setInsumos]      = usePersisted("ce-insumos",      []);
+  const [allEnvios,    setAllEnvios]    = usePersisted("ce-envios",       {});
+  const [usuarios,     setUsuarios]     = usePersisted("ce-users",        []);
+  const [cookInsumos,  setCookInsumos]  = usePersisted("ce-cook-insumos", initialCookInsumos);
+  const [salsas,       setSalsas]       = usePersisted("ce-salsas",       initialSalsasData);
+  const [produccion,   setProduccion]   = usePersisted("ce-produccion",   []);
 
   const [selLocal, setSelLocal] = useState(null);
-  const [tabLocal, setTabLocal] = useState(0); // 0=nuevo envío, 1=historial
+  const [tabLocal, setTabLocal] = useState(0);
 
   const logout = () => { localStorage.removeItem(SESSION_KEY); setCurrentUser(null); };
   if (!currentUser) return <LoginScreen onLogin={u => setCurrentUser(u)} />;
@@ -499,6 +834,16 @@ export default function App() {
   const localActual = locales.find(l => l.id === selLocal);
   const getEnvios = id => allEnvios[id] || [];
   const setEnvios = (id, envs) => setAllEnvios({...allEnvios, [id]: envs});
+
+  const headerTitle =
+    selLocal==="insumos"      ? "🛒 Insumos y precios"
+    : selLocal==="locales"    ? "🏪 Gestión de locales"
+    : selLocal==="usuarios"   ? "👥 Usuarios"
+    : selLocal==="recetas-ins"? "🥦 Insumos de recetas"
+    : selLocal==="recetas"    ? "🧪 Recetas"
+    : selLocal==="produccion" ? "🏭 Producción"
+    : localActual             ? localActual.nombre
+    : "← Seleccioná un local para comenzar";
 
   return (
     <div style={{ display:"flex", minHeight:"100vh", fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
@@ -524,7 +869,7 @@ export default function App() {
           </button>
         ))}
 
-        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>GENERAL</div>
+        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>ENVÍOS</div>
         <button style={S.localBtn(selLocal==="insumos","#27ae60")} onClick={()=>setSelLocal("insumos")}>
           <span>🛒</span> Insumos
         </button>
@@ -536,6 +881,17 @@ export default function App() {
             <span>👥</span> Usuarios
           </button>
         )}
+
+        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>COCINA</div>
+        <button style={S.localBtn(selLocal==="recetas-ins","#117a65")} onClick={()=>setSelLocal("recetas-ins")}>
+          <span>🥦</span> Insumos recetas
+        </button>
+        <button style={S.localBtn(selLocal==="recetas","#1a7a3a")} onClick={()=>setSelLocal("recetas")}>
+          <span>🧪</span> Recetas
+        </button>
+        <button style={S.localBtn(selLocal==="produccion","#e67e22")} onClick={()=>setSelLocal("produccion")}>
+          <span>🏭</span> Producción
+        </button>
 
         <div style={{marginTop:"auto",borderTop:"1px solid #ffffff10",padding:"12px 14px"}}>
           <div style={{fontSize:"9px",color:"#446",fontWeight:"700",letterSpacing:"1px",marginBottom:"6px"}}>SESIÓN</div>
@@ -550,12 +906,7 @@ export default function App() {
       {/* MAIN */}
       <div style={S.main}>
         <div style={{background:"#fff",borderBottom:"1px solid #e8e8e8",padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",minHeight:"52px"}}>
-          <div style={{fontWeight:"700",fontSize:"15px",color:"#1a2e1a"}}>
-            {selLocal==="insumos" ? "🛒 Insumos y precios"
-              : selLocal==="locales" ? "🏪 Gestión de locales"
-              : localActual ? localActual.nombre
-              : "← Seleccioná un local para comenzar"}
-          </div>
+          <div style={{fontWeight:"700",fontSize:"15px",color:"#1a2e1a"}}>{headerTitle}</div>
           {localActual && (
             <div style={{display:"flex",gap:"4px"}}>
               <button style={S.tab(tabLocal===0)} onClick={()=>setTabLocal(0)}>📤 Nuevo Envío</button>
@@ -570,9 +921,12 @@ export default function App() {
             <div style={{fontSize:"16px"}}>Seleccioná un local del panel izquierdo</div>
           </div>
         )}
-        {selLocal==="insumos" && <InsumosTab insumos={insumos} setInsumos={setInsumos} />}
-        {selLocal==="locales" && <LocalesTab locales={locales} setLocales={setLocales} />}
-        {selLocal==="usuarios" && currentUser?.isAdmin && <UsuariosTab usuarios={usuarios} setUsuarios={setUsuarios} />}
+        {selLocal==="insumos"     && <InsumosTab insumos={insumos} setInsumos={setInsumos} />}
+        {selLocal==="locales"     && <LocalesTab locales={locales} setLocales={setLocales} />}
+        {selLocal==="usuarios"    && currentUser?.isAdmin && <UsuariosTab usuarios={usuarios} setUsuarios={setUsuarios} />}
+        {selLocal==="recetas-ins" && <InsumosTab insumos={cookInsumos} setInsumos={setCookInsumos} />}
+        {selLocal==="recetas"     && <SalsasTab salsas={salsas} setSalsas={setSalsas} cookInsumos={cookInsumos} />}
+        {selLocal==="produccion"  && <ProduccionTab salsas={salsas} cookInsumos={cookInsumos} produccion={produccion} setProduccion={setProduccion} locales={locales} />}
         {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={insumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
         {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
       </div>
