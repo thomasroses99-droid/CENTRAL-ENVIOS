@@ -150,6 +150,19 @@ function calcCostoSalsa(salsa, insumos) {
   return kg > 0 ? total / kg : 0;
 }
 
+function calcConsumoEnvios(allEnvios) {
+  const consumo = {};
+  for (const lista of Object.values(allEnvios || {})) {
+    for (const envio of lista) {
+      for (const item of (envio.items || [])) {
+        const id = Number(item.insumo_id);
+        consumo[id] = (consumo[id] || 0) + (Number(item.cantidad) || 0);
+      }
+    }
+  }
+  return consumo;
+}
+
 function calcConsumoProduccion(produccion, salsas) {
   const consumo = {};
   for (const p of (produccion || [])) {
@@ -846,7 +859,7 @@ function UsuariosTab({ usuarios, setUsuarios }) {
 }
 
 // ===================== STOCK =====================
-function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, setIngresosStock, salsas, produccion }) {
+function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, setIngresosStock, salsas, produccion, allEnvios }) {
   const [tabStock, setTabStock] = useState(0); // 0=actual, 1=ingresos, 2=recetas
   const [form, setForm] = useState({ fecha: today(), insumo_id: cookInsumos[0]?.id || "", cantidad: "", nota: "" });
   const [histOpen, setHistOpen] = useState(false);
@@ -858,15 +871,18 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
   };
   const fmtFecha = iso => { try { const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; } catch { return iso; } };
 
-  const consumo = calcConsumoProduccion(produccion, salsas);
+  const consumoProd  = calcConsumoProduccion(produccion, salsas);
+  const consumoEnv   = calcConsumoEnvios(allEnvios);
 
   const stockActual = cookInsumos.map(ins => {
-    const inicial = Number(stockInicial[ins.id] || 0);
-    const recibido = ingresosStock.filter(e => e.insumo_id === ins.id).reduce((a,e) => a + e.cantidad, 0);
-    const usado = consumo[ins.id] || 0;
-    const actual = inicial + recibido - usado;
-    const color = actual < 0 ? "#c0392b" : actual === 0 ? "#aaa" : actual < 1 ? "#e67e22" : "#1a7a3a";
-    return { ...ins, inicial, recibido, usado, actual, color };
+    const inicial   = Number(stockInicial[ins.id] || 0);
+    const recibido  = ingresosStock.filter(e => e.insumo_id === ins.id).reduce((a,e) => a + e.cantidad, 0);
+    const usadoProd = consumoProd[ins.id] || 0;
+    const usadoEnv  = consumoEnv[ins.id]  || 0;
+    const usado     = usadoProd + usadoEnv;
+    const actual    = inicial + recibido - usado;
+    const color     = actual < 0 ? "#c0392b" : actual === 0 ? "#aaa" : actual < 1 ? "#e67e22" : "#1a7a3a";
+    return { ...ins, inicial, recibido, usadoProd, usadoEnv, usado, actual, color };
   });
 
   const byCat = CATS.map(cat => ({ cat, items: stockActual.filter(i => i.categoria === cat) })).filter(g => g.items.length > 0);
@@ -907,7 +923,8 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
                     <th style={S.th}>Insumo</th>
                     <th style={S.th}>Inicial</th>
                     <th style={S.th}>Recibido</th>
-                    <th style={S.th}>Usado (producción)</th>
+                    <th style={S.th}>Producción</th>
+                    <th style={S.th}>Enviado</th>
                     <th style={S.th}>Stock actual</th>
                   </tr>
                 </thead>
@@ -926,8 +943,11 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
                       <td style={{ ...S.td, color: ins.recibido > 0 ? "#2471a3" : "#bbb" }}>
                         {ins.recibido > 0 ? `+${fmtKg(ins.recibido)} ${ins.unidad}` : "—"}
                       </td>
-                      <td style={{ ...S.td, color: ins.usado > 0 ? "#e67e22" : "#bbb" }}>
-                        {ins.usado > 0.0001 ? `-${fmtKg(ins.usado)} ${ins.unidad}` : "—"}
+                      <td style={{ ...S.td, color: ins.usadoProd > 0.0001 ? "#e67e22" : "#bbb" }}>
+                        {ins.usadoProd > 0.0001 ? `-${fmtKg(ins.usadoProd)} ${ins.unidad}` : "—"}
+                      </td>
+                      <td style={{ ...S.td, color: ins.usadoEnv > 0 ? "#c0392b" : "#bbb" }}>
+                        {ins.usadoEnv > 0 ? `-${fmtKg(ins.usadoEnv)} ${ins.unidad}` : "—"}
                       </td>
                       <td style={{ ...S.td, fontWeight: "700", color: ins.color }}>
                         {ins.actual === 0 && ins.inicial === 0 && ins.recibido === 0 ? "—" : `${fmtKg(ins.actual)} ${ins.unidad}`}
@@ -1198,7 +1218,7 @@ export default function App() {
         {selLocal==="insumos"     && <InsumosTab insumos={cookInsumos} setInsumos={setCookInsumos} />}
         {selLocal==="recetas"     && <SalsasTab salsas={salsas} setSalsas={setSalsas} cookInsumos={cookInsumos} />}
         {selLocal==="produccion"  && <ProduccionTab salsas={salsas} cookInsumos={cookInsumos} produccion={produccion} setProduccion={setProduccion} locales={locales} />}
-        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInicial={stockInicial} setStockInicial={setStockInicial} ingresosStock={ingresosStock} setIngresosStock={setIngresosStock} salsas={salsas} produccion={produccion} />}
+        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInicial={stockInicial} setStockInicial={setStockInicial} ingresosStock={ingresosStock} setIngresosStock={setIngresosStock} salsas={salsas} produccion={produccion} allEnvios={allEnvios} />}
         {selLocal==="costos"      && <CostosFijosTab costosFijos={costosFijos} setCostosFijos={setCostosFijos} />}
         {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={cookInsumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
         {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
