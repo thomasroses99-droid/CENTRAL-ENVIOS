@@ -222,7 +222,7 @@ function InsumosTab({ insumos, setInsumos }) {
   const del = id => setInsumos(insumos.filter(i => i.id !== id));
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "16px" }}>
       <h2 style={{ margin: "0 0 20px", color: "#1a2e1a" }}>Insumos y precios</h2>
       <div style={S.card}>
         <div style={{ fontWeight: "700", marginBottom: "12px", fontSize: "13px" }}>Agregar insumo</div>
@@ -422,7 +422,7 @@ function ProduccionTab({ salsas, cookInsumos, produccion, setProduccion, locales
   };
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "16px" }}>
       <h2 style={{ margin: "0 0 20px", color: "#1a2e1a" }}>Producción de recetas</h2>
 
       <div style={S.card}>
@@ -526,7 +526,7 @@ function CostosFijosTab({ costosFijos, setCostosFijos }) {
   const total = costosFijos.reduce((s, c) => s + c.monto, 0);
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "16px" }}>
       <h2 style={{ margin: "0 0 20px", color: "#1a2e1a" }}>Costos fijos</h2>
 
       <div style={{ ...S.card, background: "#1a2e1a", color: "#fff", marginBottom: "20px" }}>
@@ -1091,7 +1091,7 @@ function StockTab({ cookInsumos, stockInicial, setStockInicial, ingresosStock, s
   const medallonColor = medallonesProducidos===0&&medallonesDesp===0 ? "#aaa" : medallonStock<0 ? "#c0392b" : medallonStock<5 ? "#e67e22" : "#1a7a3a";
 
   return (
-    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "24px" }}>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "16px" }}>
       <h2 style={{ margin: "0 0 16px", color: "#1a2e1a" }}>Stock</h2>
       <div style={{ display: "flex", gap: "4px", marginBottom: "20px" }}>
         <button style={S.tab(tabStock===0)} onClick={() => setTabStock(0)}>📋 Stock actual</button>
@@ -1446,6 +1446,8 @@ export default function App() {
 
   const [selLocal, setSelLocal] = useState(null);
   const [tabLocal, setTabLocal] = useState(0);
+  const isMobile = useMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const logout = () => { localStorage.removeItem(SESSION_KEY); setCurrentUser(null); };
   if (!currentUser) return <LoginScreen onLogin={u => setCurrentUser(u)} />;
@@ -1466,20 +1468,39 @@ export default function App() {
     : localActual             ? localActual.nombre
     : "← Seleccioná un local para comenzar";
 
+  const closeSidebar = () => setSidebarOpen(false);
+  const selItem = id => { setSelLocal(id); if (isMobile) closeSidebar(); };
+
   return (
     <div style={{ display:"flex", minHeight:"100vh", fontFamily:"'Segoe UI',system-ui,sans-serif" }}>
+
+      {/* BACKDROP MOBILE */}
+      {isMobile && sidebarOpen && (
+        <div onClick={closeSidebar} style={{ position:"fixed", inset:0, background:"#00000060", zIndex:199 }} />
+      )}
+
       {/* SIDEBAR */}
-      <div style={S.sidebar}>
-        <div style={{ padding:"20px 18px 16px", borderBottom:"1px solid #ffffff10" }}>
-          <div style={{color:"#fff",fontWeight:"700",fontSize:"16px"}}>📦 Central de Envíos</div>
-          <div style={{fontSize:"10px",marginTop:"4px",color:fbOk===true?"#6ee49a":fbOk===false?"#f1948a":"#667"}}>
-            {fbOk===true?"☁️ sincronizado":fbOk===false?"⚠️ sin conexión":"⏳ conectando..."}
+      <div style={isMobile ? {
+        position:"fixed", top:0, left: sidebarOpen ? 0 : -260,
+        width:250, height:"100%", zIndex:200, transition:"left 0.25s ease",
+        background:"#16213e", display:"flex", flexDirection:"column",
+        overflowY:"auto", boxShadow: sidebarOpen ? "4px 0 24px #0007" : "none"
+      } : S.sidebar}>
+        <div style={{ padding:"16px 16px 13px", borderBottom:"1px solid #ffffff10", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+          <div>
+            <div style={{color:"#fff",fontWeight:"700",fontSize:"15px"}}>📦 Central de Envíos</div>
+            <div style={{fontSize:"10px",marginTop:"3px",color:fbOk===true?"#6ee49a":fbOk===false?"#f1948a":"#667"}}>
+              {fbOk===true?"☁️ sincronizado":fbOk===false?"⚠️ sin conexión":"⏳ conectando..."}
+            </div>
           </div>
+          {isMobile && (
+            <button onClick={closeSidebar} style={{background:"none",border:"none",color:"#889",fontSize:"20px",cursor:"pointer",padding:"0 2px",lineHeight:1,marginTop:"2px"}}>✕</button>
+          )}
         </div>
 
-        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px"}}>LOCALES</div>
+        <div style={{padding:"12px 16px 5px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px"}}>LOCALES</div>
         {locales.map(l => (
-          <button key={l.id} style={S.localBtn(selLocal===l.id, l.color)} onClick={()=>{setSelLocal(l.id);setTabLocal(0);}}>
+          <button key={l.id} style={S.localBtn(selLocal===l.id, l.color)} onClick={()=>{selItem(l.id);setTabLocal(0);}}>
             <div style={S.dot(l.color)}/>
             <span style={{flex:1}}>{l.nombre}</span>
             {getEnvios(l.id).filter(e=>!e.pagado).length > 0 && (
@@ -1490,33 +1511,33 @@ export default function App() {
           </button>
         ))}
 
-        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>GESTIÓN</div>
-        <button style={S.localBtn(selLocal==="locales","#7d3c98")} onClick={()=>setSelLocal("locales")}>
+        <div style={{padding:"12px 16px 5px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"4px"}}>GESTIÓN</div>
+        <button style={S.localBtn(selLocal==="locales","#7d3c98")} onClick={()=>selItem("locales")}>
           <span>🏪</span> Locales
         </button>
         {currentUser?.isAdmin && (
-          <button style={S.localBtn(selLocal==="usuarios","#d35400")} onClick={()=>setSelLocal("usuarios")}>
+          <button style={S.localBtn(selLocal==="usuarios","#d35400")} onClick={()=>selItem("usuarios")}>
             <span>👥</span> Usuarios
           </button>
         )}
 
-        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>COCINA</div>
-        <button style={S.localBtn(selLocal==="insumos","#117a65")} onClick={()=>setSelLocal("insumos")}>
+        <div style={{padding:"12px 16px 5px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"4px"}}>COCINA</div>
+        <button style={S.localBtn(selLocal==="insumos","#117a65")} onClick={()=>selItem("insumos")}>
           <span>🛒</span> Insumos
         </button>
-        <button style={S.localBtn(selLocal==="recetas","#1a7a3a")} onClick={()=>setSelLocal("recetas")}>
+        <button style={S.localBtn(selLocal==="recetas","#1a7a3a")} onClick={()=>selItem("recetas")}>
           <span>🧪</span> Recetas
         </button>
-        <button style={S.localBtn(selLocal==="medallon","#8b4513")} onClick={()=>setSelLocal("medallon")}>
+        <button style={S.localBtn(selLocal==="medallon","#8b4513")} onClick={()=>selItem("medallon")}>
           <span>🥩</span> Medallón
         </button>
-        <button style={S.localBtn(selLocal==="produccion","#e67e22")} onClick={()=>setSelLocal("produccion")}>
+        <button style={S.localBtn(selLocal==="produccion","#e67e22")} onClick={()=>selItem("produccion")}>
           <span>🏭</span> Producción
         </button>
-        <button style={S.localBtn(selLocal==="stock","#2471a3")} onClick={()=>setSelLocal("stock")}>
+        <button style={S.localBtn(selLocal==="stock","#2471a3")} onClick={()=>selItem("stock")}>
           <span>📊</span> Stock
         </button>
-        <button style={S.localBtn(selLocal==="costos","#c0392b")} onClick={()=>setSelLocal("costos")}>
+        <button style={S.localBtn(selLocal==="costos","#c0392b")} onClick={()=>selItem("costos")}>
           <span>💰</span> Costos fijos
         </button>
 
@@ -1531,13 +1552,21 @@ export default function App() {
       </div>
 
       {/* MAIN */}
-      <div style={S.main}>
-        <div style={{background:"#fff",borderBottom:"1px solid #e8e8e8",padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",minHeight:"52px"}}>
-          <div style={{fontWeight:"700",fontSize:"15px",color:"#1a2e1a"}}>{headerTitle}</div>
+      <div style={{...S.main, marginLeft: isMobile ? 0 : undefined}}>
+        <div style={{background:"#fff",borderBottom:"1px solid #e8e8e8",padding:isMobile?"11px 12px":"13px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",minHeight:"50px",gap:"8px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",minWidth:0,flex:1}}>
+            {isMobile && (
+              <button onClick={()=>setSidebarOpen(v=>!v)}
+                style={{background:"none",border:"none",color:"#1a2e1a",fontSize:"24px",cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0}}>
+                ☰
+              </button>
+            )}
+            <div style={{fontWeight:"700",fontSize:isMobile?"13px":"15px",color:"#1a2e1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{headerTitle}</div>
+          </div>
           {localActual && (
-            <div style={{display:"flex",gap:"4px"}}>
-              <button style={S.tab(tabLocal===0)} onClick={()=>setTabLocal(0)}>📤 Nuevo Envío</button>
-              <button style={S.tab(tabLocal===1)} onClick={()=>setTabLocal(1)}>📋 Historial / Deuda</button>
+            <div style={{display:"flex",gap:"3px",flexShrink:0}}>
+              <button style={{...S.tab(tabLocal===0),fontSize:isMobile?"11px":"13px",padding:isMobile?"6px 9px":"9px 16px"}} onClick={()=>setTabLocal(0)}>{isMobile?"📤":"📤 Nuevo Envío"}</button>
+              <button style={{...S.tab(tabLocal===1),fontSize:isMobile?"11px":"13px",padding:isMobile?"6px 9px":"9px 16px"}} onClick={()=>setTabLocal(1)}>{isMobile?"📋":"📋 Historial"}</button>
             </div>
           )}
         </div>
@@ -1545,7 +1574,9 @@ export default function App() {
         {!selLocal && (
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"75vh",flexDirection:"column",gap:"12px",color:"#aaa"}}>
             <div style={{fontSize:"52px"}}>📦</div>
-            <div style={{fontSize:"16px"}}>Seleccioná un local del panel izquierdo</div>
+            <div style={{fontSize:isMobile?"13px":"16px",textAlign:"center",padding:"0 24px"}}>
+              {isMobile ? "Tocá ☰ para ver el menú" : "Seleccioná un local del panel izquierdo"}
+            </div>
           </div>
         )}
         {selLocal==="locales"     && <LocalesTab locales={locales} setLocales={setLocales} />}
