@@ -695,103 +695,266 @@ function NuevoEnvio({ local, insumos, onGuardar }) {
 }
 
 // ===================== HISTORIAL =====================
-function Historial({ local, envios, setEnvios }) {
+function Historial({ local, envios, setEnvios, produccion, produccionMedallon, salsas, pagos, setPagos }) {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [expandido, setExpandido] = useState(null);
+  const [histTab, setHistTab] = useState(0); // 0=envíos 1=producción 2=pagos
+  const [pagoFecha, setPagoFecha] = useState(today());
+  const [pagoMonto, setPagoMonto] = useState("");
+  const [pagoNota, setPagoNota] = useState("");
 
+  const fmtFecha = iso => { try { const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; } catch { return iso; } };
+  const fmtGr = kg => Math.round(kg*1000)>=1000 ? `${kg.toFixed(2)} kg` : `${Math.round(kg*1000)} gr`;
+
+  // ── Envíos filtrados ──
   const filtrados = envios
     .filter(e => (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta))
     .sort((a,b) => b.fecha.localeCompare(a.fecha));
 
-  const pendiente = filtrados.filter(e=>!e.pagado).reduce((s,e)=>s+e.total,0);
-  const pagado    = filtrados.filter(e=>e.pagado).reduce((s,e)=>s+e.total,0);
+  // ── Despachos de producción para este local ──
+  const despachosProd = (produccion||[])
+    .filter(p => p.tipo==="despacho" && p.local_id===local.id)
+    .filter(p => (!desde || p.fecha >= desde) && (!hasta || p.fecha <= hasta))
+    .sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  const despachosMed = (produccionMedallon||[])
+    .filter(p => p.tipo==="despacho" && p.local_id===local.id)
+    .filter(p => (!desde || p.fecha >= desde) && (!hasta || p.fecha <= hasta))
+    .sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  // ── Pagos ──
+  const todosLosPagos = pagos[local.id] || [];
+  const pagosLocal = todosLosPagos
+    .filter(p => (!desde || p.fecha >= desde) && (!hasta || p.fecha <= hasta))
+    .sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  const totalPagosRecibidos = todosLosPagos.reduce((s,p) => s+p.monto, 0);
+  const deudaEnvios  = envios.filter(e=>!e.pagado).reduce((s,e)=>s+e.total,0);
+  const balance      = deudaEnvios - totalPagosRecibidos;
 
   const togglePagado = id => setEnvios(envios.map(e => e.id!==id ? e : {...e, pagado:!e.pagado}));
   const eliminar = id => { if (confirm("¿Eliminar este envío?")) setEnvios(envios.filter(e=>e.id!==id)); };
 
-  return (
-    <div style={{ maxWidth:"900px", margin:"0 auto", padding:"24px" }}>
-      <h2 style={{ margin:"0 0 20px", color:"#1a2e1a" }}>Historial / Deuda — {local.nombre}</h2>
+  const registrarPago = () => {
+    if (!pagoMonto || Number(pagoMonto)<=0) return;
+    setPagos(prev => ({
+      ...prev,
+      [local.id]: [{ id:uid(), fecha:pagoFecha, monto:Number(pagoMonto), nota:pagoNota.trim() }, ...(prev[local.id]||[])]
+    }));
+    setPagoMonto(""); setPagoNota("");
+  };
+  const eliminarPago = id => {
+    if (confirm("¿Eliminar este pago?")) {
+      setPagos(prev => ({ ...prev, [local.id]: (prev[local.id]||[]).filter(p=>p.id!==id) }));
+    }
+  };
 
+  const exportarPDF = () => {
+    const per = `${desde||"inicio"} → ${hasta||today()}`;
+    const rowsEnv = filtrados.map(e=>`
+      <tr><td>${fmtFecha(e.fecha)}</td><td>${e.nota||'—'}</td><td style="text-align:right">${fmt(e.total)}</td><td style="text-align:center;color:${e.pagado?"#27ae60":"#c0392b"}">${e.pagado?"PAGADO":"PENDIENTE"}</td></tr>`).join("");
+    const rowsProd = despachosProd.map(p=>{
+      const s=(salsas||[]).find(x=>x.id===p.salsa_id);
+      const pu=s?.rendTipo==="unidad";
+      return `<tr><td>${fmtFecha(p.fecha)}</td><td>🧪 ${s?.nombre||"?"}</td><td style="text-align:right">${pu?`${Math.round(p.cantidadKg)} u`:fmtGr(p.cantidadKg)}</td><td>—</td></tr>`;
+    }).join("");
+    const rowsMed = despachosMed.map(p=>`<tr><td>${fmtFecha(p.fecha)}</td><td>🥩 Medallones</td><td style="text-align:right">${p.medallones} u</td><td>—</td></tr>`).join("");
+    const rowsPag = pagosLocal.map(p=>`<tr><td>${fmtFecha(p.fecha)}</td><td>${p.nota||'—'}</td><td style="text-align:right;color:#27ae60">+${fmt(p.monto)}</td><td></td></tr>`).join("");
+    const balStr  = balance>0?`Debe ${fmt(balance)}`:balance<0?`Saldo a favor: ${fmt(Math.abs(balance))}`:"Al día ✓";
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cuenta ${local.nombre}</title>
+      <style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;padding:24px;color:#111}h1{font-size:20px;margin:0 0 4px}h2{font-size:13px;color:#555;margin:18px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px}table{width:100%;border-collapse:collapse;margin-bottom:8px}th{background:#f0f0f0;padding:6px 8px;text-align:left;font-size:11px;border-bottom:2px solid #ccc}td{padding:6px 8px;border-bottom:1px solid #eee}.balance{font-size:16px;font-weight:700;margin-top:16px;padding:10px 14px;background:#f5f5f5;border-radius:6px}.footer{margin-top:20px;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:8px}@media print{body{padding:10px}}</style>
+      </head><body>
+      <h1>Cuenta Corriente — ${local.nombre}</h1>
+      <p style="color:#888;font-size:11px">Período: ${per} | Generado: ${fmtFecha(today())}</p>
+      <h2>Envíos de mercadería</h2>
+      <table><thead><tr><th>Fecha</th><th>Nota</th><th style="text-align:right">Total</th><th style="text-align:center">Estado</th></tr></thead><tbody>${rowsEnv||'<tr><td colspan=4 style="color:#aaa;padding:8px">Sin envíos</td></tr>'}</tbody></table>
+      <h2>Producción despachada (recetas)</h2>
+      <table><thead><tr><th>Fecha</th><th>Receta</th><th style="text-align:right">Cantidad</th><th>—</th></tr></thead><tbody>${(rowsProd+rowsMed)||'<tr><td colspan=4 style="color:#aaa;padding:8px">Sin despachos de producción</td></tr>'}</tbody></table>
+      <h2>Pagos recibidos</h2>
+      <table><thead><tr><th>Fecha</th><th>Nota</th><th style="text-align:right">Monto</th><th></th></tr></thead><tbody>${rowsPag||'<tr><td colspan=4 style="color:#aaa;padding:8px">Sin pagos registrados</td></tr>'}</tbody></table>
+      <div class="balance">Balance neto (deuda envíos − pagos): ${balStr}</div>
+      <div class="footer">Central de Envíos · ${local.nombre} · ${fmtFecha(today())}</div>
+      </body></html>`;
+    const w=window.open("","_blank");
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>w.print(),350);
+  };
+
+  const pendEnvios = filtrados.filter(e=>!e.pagado).length;
+  const totalDespachos = despachosProd.length + despachosMed.length;
+
+  return (
+    <div style={{ maxWidth:"950px", margin:"0 auto", padding:"24px" }}>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"20px", flexWrap:"wrap", gap:"10px" }}>
+        <h2 style={{ margin:0, color:"#1a2e1a" }}>Cuenta corriente — {local.nombre}</h2>
+        <button onClick={exportarPDF} style={{...S.btn("#1a5276"),fontSize:"12px",padding:"7px 16px"}}>🖨️ Exportar PDF</button>
+      </div>
+
+      {/* Filtro fechas */}
       <div style={S.card}>
         <div style={{ display:"flex", gap:"16px", flexWrap:"wrap", alignItems:"flex-end" }}>
           <div><label style={S.label}>Desde</label><input type="date" value={desde} onChange={e=>setDesde(e.target.value)} style={S.inp} /></div>
           <div><label style={S.label}>Hasta</label><input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} style={S.inp} /></div>
-          <button onClick={()=>{setDesde("");setHasta("");}} style={{...S.btn("#888"),fontSize:"12px",padding:"7px 14px"}}>Limpiar filtro</button>
+          <button onClick={()=>{setDesde("");setHasta("");}} style={{...S.btn("#888"),fontSize:"12px",padding:"7px 14px"}}>Limpiar</button>
         </div>
       </div>
 
-      {filtrados.length > 0 && (
-        <div style={{ display:"flex", gap:"12px", marginBottom:"16px", flexWrap:"wrap" }}>
-          {[
-            {label:"DEUDA PENDIENTE", val:pendiente, color:"#c0392b"},
-            {label:"TOTAL PAGADO",    val:pagado,    color:"#27ae60"},
-            {label:"TOTAL PERÍODO",   val:pendiente+pagado, color:"#1a2e1a"},
-          ].map(({label,val,color})=>(
-            <div key={label} style={{...S.card, flex:1, margin:0, textAlign:"center", borderTop:`3px solid ${color}`}}>
-              <div style={{fontSize:"11px",color:"#888"}}>{label}</div>
-              <div style={{fontSize:"22px",fontWeight:"700",color}}>{fmt(val)}</div>
-              <div style={{fontSize:"11px",color:"#aaa"}}>{filtrados.filter(e=>label==="DEUDA PENDIENTE"?!e.pagado:label==="TOTAL PAGADO"?e.pagado:true).length} envíos</div>
+      {/* Balance cards */}
+      <div style={{ display:"flex", gap:"10px", marginBottom:"18px", flexWrap:"wrap" }}>
+        <div style={{...S.card,flex:1,margin:0,textAlign:"center",borderTop:"3px solid #c0392b"}}>
+          <div style={{fontSize:"11px",color:"#888"}}>DEUDA ENVÍOS</div>
+          <div style={{fontSize:"20px",fontWeight:"700",color:"#c0392b"}}>{fmt(deudaEnvios)}</div>
+          <div style={{fontSize:"10px",color:"#aaa"}}>{envios.filter(e=>!e.pagado).length} pendientes</div>
+        </div>
+        <div style={{...S.card,flex:1,margin:0,textAlign:"center",borderTop:"3px solid #27ae60"}}>
+          <div style={{fontSize:"11px",color:"#888"}}>PAGOS RECIBIDOS</div>
+          <div style={{fontSize:"20px",fontWeight:"700",color:"#27ae60"}}>{fmt(totalPagosRecibidos)}</div>
+          <div style={{fontSize:"10px",color:"#aaa"}}>{todosLosPagos.length} pagos</div>
+        </div>
+        <div style={{...S.card,flex:"2 1 200px",margin:0,textAlign:"center",borderTop:`3px solid ${balance>0?"#e67e22":balance<0?"#1a7a3a":"#aaa"}`}}>
+          <div style={{fontSize:"11px",color:"#888"}}>BALANCE NETO</div>
+          <div style={{fontSize:"22px",fontWeight:"700",color:balance>0?"#e67e22":balance<0?"#1a7a3a":"#888"}}>
+            {balance>0?`Debe ${fmt(balance)}`:balance<0?`Saldo a favor ${fmt(Math.abs(balance))}`:"Al día ✓"}
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{ display:"flex", gap:"2px", marginBottom:"16px" }}>
+        {[
+          {label:"📋 Envíos", badge: pendEnvios > 0 ? pendEnvios : 0},
+          {label:"🏭 Producción enviada", badge: totalDespachos > 0 ? totalDespachos : 0},
+          {label:"💰 Pagos", badge: 0},
+        ].map(({label,badge},i) => (
+          <button key={i} style={{...S.tab(histTab===i), display:"flex", alignItems:"center", gap:"5px"}} onClick={()=>setHistTab(i)}>
+            {label}
+            {badge > 0 && <span style={{background:i===0?"#c0392b":"#e67e22",color:"#fff",borderRadius:"8px",fontSize:"9px",padding:"1px 5px"}}>{badge}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TAB 0: Envíos ── */}
+      {histTab===0 && (
+        <>
+          {filtrados.length===0 && <div style={{...S.card,textAlign:"center",color:"#888"}}>No hay envíos en este período.</div>}
+          {filtrados.map(e => (
+            <div key={e.id} style={{...S.card,borderLeft:`4px solid ${e.pagado?"#27ae60":"#c0392b"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
+                <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontWeight:"700",fontSize:"14px"}}>{fmtFecha(e.fecha)}</div>
+                    {e.nota && <div style={{fontSize:"12px",color:"#888"}}>{e.nota}</div>}
+                  </div>
+                  <Tag color={e.pagado?"#27ae60":"#c0392b"}>{e.pagado?"PAGADO":"PENDIENTE"}</Tag>
+                </div>
+                <div style={{display:"flex",gap:"12px",alignItems:"center",flexWrap:"wrap"}}>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:"11px",color:"#888"}}>Mercadería</div><div style={{fontWeight:"700"}}>{fmt(e.total_mercaderia)}</div></div>
+                  {e.total_horas>0 && <div style={{textAlign:"right"}}><div style={{fontSize:"11px",color:"#888"}}>Horas</div><div style={{fontWeight:"700"}}>{fmt(e.total_horas)}</div></div>}
+                  <div style={{textAlign:"right"}}><div style={{fontSize:"11px",color:"#888"}}>TOTAL</div><div style={{fontWeight:"700",fontSize:"16px"}}>{fmt(e.total)}</div></div>
+                  <div style={{display:"flex",gap:"6px"}}>
+                    <button onClick={()=>setExpandido(expandido===e.id?null:e.id)} style={{...S.btn("#2471a3"),fontSize:"11px",padding:"5px 10px"}}>{expandido===e.id?"▲":"▼"}</button>
+                    <button onClick={()=>togglePagado(e.id)} style={{...S.btn(e.pagado?"#888":"#27ae60"),fontSize:"11px",padding:"5px 10px"}}>{e.pagado?"Desmarcar":"✓ Pagado"}</button>
+                    <button onClick={()=>eliminar(e.id)} style={{...S.btn("#c0392b"),fontSize:"11px",padding:"5px 10px"}}>🗑</button>
+                  </div>
+                </div>
+              </div>
+              {expandido===e.id && (
+                <div style={{marginTop:"14px",borderTop:"1px solid #f0f0f0",paddingTop:"14px"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",marginBottom:e.horas?.length>0?"12px":0}}>
+                    <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Cantidad</th><th style={S.th}>Unidad</th><th style={S.th}>Precio unit.</th><th style={S.th}>Merma %</th><th style={S.th}>Subtotal</th></tr></thead>
+                    <tbody>
+                      {e.items.map((it,i)=>(
+                        <tr key={i}>
+                          <td style={S.td}>{it.nombre}</td><td style={S.td}>{it.cantidad}</td><td style={S.td}>{it.unidad}</td>
+                          <td style={S.td}>{fmt(it.precio_unidad)}</td>
+                          <td style={S.td}>{it.merma_pct>0?<Tag color="#e67e22">{it.merma_pct}%</Tag>:<span style={{color:"#ccc"}}>—</span>}</td>
+                          <td style={S.td}><strong>{fmt(it.subtotal??it.cantidad*it.precio_unidad)}</strong></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {e.horas?.length>0 && <>
+                    <div style={{fontSize:"12px",fontWeight:"700",color:"#2471a3",marginBottom:"6px"}}>Horas de empleados</div>
+                    <table style={{width:"100%",borderCollapse:"collapse"}}>
+                      <thead><tr><th style={S.th}>Descripción</th><th style={S.th}>Horas</th><th style={S.th}>$ / hora</th><th style={S.th}>Subtotal</th></tr></thead>
+                      <tbody>{e.horas.map((h,i)=>(
+                        <tr key={i}><td style={S.td}>{h.descripcion}</td><td style={S.td}>{h.horas}</td><td style={S.td}>{fmt(h.precio_hora)}</td><td style={S.td}><strong>{fmt(h.horas*h.precio_hora)}</strong></td></tr>
+                      ))}</tbody>
+                    </table>
+                  </>}
+                </div>
+              )}
             </div>
           ))}
-        </div>
+        </>
       )}
 
-      {filtrados.length===0 && <div style={{...S.card,textAlign:"center",color:"#888"}}>No hay envíos en este período.</div>}
-
-      {filtrados.map(e => (
-        <div key={e.id} style={{...S.card, borderLeft:`4px solid ${e.pagado?"#27ae60":"#c0392b"}`}}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:"8px" }}>
-            <div style={{ display:"flex", gap:"12px", alignItems:"center" }}>
-              <div>
-                <div style={{fontWeight:"700",fontSize:"14px"}}>{e.fecha}</div>
-                {e.nota && <div style={{fontSize:"12px",color:"#888"}}>{e.nota}</div>}
+      {/* ── TAB 1: Producción enviada ── */}
+      {histTab===1 && (
+        <>
+          {despachosProd.length===0 && despachosMed.length===0 && (
+            <div style={{...S.card,textAlign:"center",color:"#888"}}>No hay despachos de producción para este local en este período.<br/><span style={{fontSize:"11px"}}>Usá "Despachar a local" desde Producción o Medallón.</span></div>
+          )}
+          {despachosProd.map(p => {
+            const s=(salsas||[]).find(x=>x.id===p.salsa_id);
+            const pu=s?.rendTipo==="unidad";
+            const cant=pu?`${Math.round(p.cantidadKg)} u`:fmtGr(p.cantidadKg);
+            return (
+              <div key={p.id} style={{...S.card,borderLeft:"4px solid #e67e22",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
+                <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
+                  <span style={{fontWeight:"700",fontSize:"13px"}}>{fmtFecha(p.fecha)}</span>
+                  <Tag color="#e67e22">Receta</Tag>
+                  <span style={{fontSize:"13px"}}>🧪 {s?.nombre||"?"}</span>
+                  {p.nota && <span style={{fontSize:"11px",color:"#888"}}>{p.nota}</span>}
+                </div>
+                <span style={{fontWeight:"700",fontSize:"14px",color:"#e67e22"}}>{cant}</span>
               </div>
-              <Tag color={e.pagado?"#27ae60":"#c0392b"}>{e.pagado?"PAGADO":"PENDIENTE"}</Tag>
+            );
+          })}
+          {despachosMed.map(p => (
+            <div key={p.id} style={{...S.card,borderLeft:"4px solid #8b4513",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
+              <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
+                <span style={{fontWeight:"700",fontSize:"13px"}}>{fmtFecha(p.fecha)}</span>
+                <Tag color="#8b4513">Medallón</Tag>
+                <span style={{fontSize:"13px"}}>🥩 Medallones</span>
+                {p.nota && <span style={{fontSize:"11px",color:"#888"}}>{p.nota}</span>}
+              </div>
+              <span style={{fontWeight:"700",fontSize:"14px",color:"#8b4513"}}>{p.medallones} u</span>
             </div>
-            <div style={{ display:"flex", gap:"12px", alignItems:"center", flexWrap:"wrap" }}>
-              <div style={{textAlign:"right"}}><div style={{fontSize:"11px",color:"#888"}}>Mercadería</div><div style={{fontWeight:"700"}}>{fmt(e.total_mercaderia)}</div></div>
-              {e.total_horas>0 && <div style={{textAlign:"right"}}><div style={{fontSize:"11px",color:"#888"}}>Horas</div><div style={{fontWeight:"700"}}>{fmt(e.total_horas)}</div></div>}
-              <div style={{textAlign:"right"}}><div style={{fontSize:"11px",color:"#888"}}>TOTAL</div><div style={{fontWeight:"700",fontSize:"16px"}}>{fmt(e.total)}</div></div>
-              <div style={{display:"flex",gap:"6px"}}>
-                <button onClick={()=>setExpandido(expandido===e.id?null:e.id)} style={{...S.btn("#2471a3"),fontSize:"11px",padding:"5px 10px"}}>{expandido===e.id?"▲":"▼"}</button>
-                <button onClick={()=>togglePagado(e.id)} style={{...S.btn(e.pagado?"#888":"#27ae60"),fontSize:"11px",padding:"5px 10px"}}>{e.pagado?"Desmarcar":"✓ Pagado"}</button>
-                <button onClick={()=>eliminar(e.id)} style={{...S.btn("#c0392b"),fontSize:"11px",padding:"5px 10px"}}>🗑</button>
-              </div>
+          ))}
+        </>
+      )}
+
+      {/* ── TAB 2: Pagos ── */}
+      {histTab===2 && (
+        <>
+          <div style={S.card}>
+            <div style={{fontWeight:"700",fontSize:"13px",marginBottom:"12px"}}>+ Registrar pago recibido</div>
+            <div style={{display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div><label style={S.label}>Fecha</label><input type="date" value={pagoFecha} onChange={e=>setPagoFecha(e.target.value)} style={S.inp} /></div>
+              <div><label style={S.label}>Monto $</label><input type="number" min="0" placeholder="0" value={pagoMonto} onChange={e=>setPagoMonto(e.target.value)} style={{...S.inp,width:"150px"}} onKeyDown={e=>e.key==="Enter"&&registrarPago()} /></div>
+              <div style={{flex:"1 1 160px"}}><label style={S.label}>Nota (opcional)</label><input value={pagoNota} onChange={e=>setPagoNota(e.target.value)} placeholder="Ej: transferencia, efectivo" style={{...S.inp,width:"100%"}} /></div>
+              <button onClick={registrarPago} style={S.btn("#27ae60")}>+ Registrar</button>
             </div>
           </div>
-
-          {expandido===e.id && (
-            <div style={{marginTop:"14px",borderTop:"1px solid #f0f0f0",paddingTop:"14px"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",marginBottom:e.horas?.length>0?"12px":0}}>
-                <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Cantidad</th><th style={S.th}>Unidad</th><th style={S.th}>Precio unit.</th><th style={S.th}>Merma %</th><th style={S.th}>Subtotal</th></tr></thead>
-                <tbody>
-                  {e.items.map((it,i)=>(
-                    <tr key={i}>
-                      <td style={S.td}>{it.nombre}</td>
-                      <td style={S.td}>{it.cantidad}</td>
-                      <td style={S.td}>{it.unidad}</td>
-                      <td style={S.td}>{fmt(it.precio_unidad)}</td>
-                      <td style={S.td}>{it.merma_pct>0 ? <Tag color="#e67e22">{it.merma_pct}%</Tag> : <span style={{color:"#ccc"}}>—</span>}</td>
-                      <td style={S.td}><strong>{fmt(it.subtotal ?? it.cantidad*it.precio_unidad)}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {e.horas?.length>0 && <>
-                <div style={{fontSize:"12px",fontWeight:"700",color:"#2471a3",marginBottom:"6px"}}>Horas de empleados</div>
-                <table style={{width:"100%",borderCollapse:"collapse"}}>
-                  <thead><tr><th style={S.th}>Descripción</th><th style={S.th}>Horas</th><th style={S.th}>$ / hora</th><th style={S.th}>Subtotal</th></tr></thead>
-                  <tbody>{e.horas.map((h,i)=>(
-                    <tr key={i}><td style={S.td}>{h.descripcion}</td><td style={S.td}>{h.horas}</td><td style={S.td}>{fmt(h.precio_hora)}</td><td style={S.td}><strong>{fmt(h.horas*h.precio_hora)}</strong></td></tr>
-                  ))}</tbody>
-                </table>
-              </>}
+          {pagosLocal.length===0 && <div style={{...S.card,textAlign:"center",color:"#888"}}>No hay pagos registrados en este período.</div>}
+          {pagosLocal.map(p => (
+            <div key={p.id} style={{...S.card,borderLeft:"4px solid #27ae60",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
+              <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
+                <span style={{fontWeight:"700",fontSize:"13px"}}>{fmtFecha(p.fecha)}</span>
+                {p.nota && <span style={{fontSize:"12px",color:"#555"}}>{p.nota}</span>}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+                <span style={{fontWeight:"700",fontSize:"16px",color:"#27ae60"}}>+{fmt(p.monto)}</span>
+                <button onClick={()=>eliminarPago(p.id)} style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:"16px"}}>×</button>
+              </div>
             </div>
-          )}
-        </div>
-      ))}
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -1279,6 +1442,7 @@ export default function App() {
   const [costosFijos,         setCostosFijos]         = usePersisted("ce-costos-fijos",   []);
   const [stockInicial, setStockInicial] = usePersisted("ce-stock-inicial", {});
   const [ingresosStock,setIngresosStock]= usePersisted("ce-ingresos-stock",[]);
+  const [pagos,        setPagos]        = usePersisted("ce-pagos",         {});
 
   const [selLocal, setSelLocal] = useState(null);
   const [tabLocal, setTabLocal] = useState(0);
@@ -1393,7 +1557,7 @@ export default function App() {
         {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInicial={stockInicial} setStockInicial={setStockInicial} ingresosStock={ingresosStock} setIngresosStock={setIngresosStock} salsas={salsas} produccion={produccion} allEnvios={allEnvios} produccionMedallon={produccionMedallon} />}
         {selLocal==="costos"      && <CostosFijosTab costosFijos={costosFijos} setCostosFijos={setCostosFijos} />}
         {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={cookInsumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
-        {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
+        {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} produccion={produccion} produccionMedallon={produccionMedallon} salsas={salsas} pagos={pagos} setPagos={setPagos} />}
       </div>
     </div>
   );
