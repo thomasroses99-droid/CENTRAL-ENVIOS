@@ -459,6 +459,75 @@ function ProduccionTab({ salsas, cookInsumos, produccion, setProduccion, locales
   );
 }
 
+// ===================== COSTOS FIJOS =====================
+const CATS_CF = ["Impuestos","Personal","Servicios","Seguros","Inmueble","Financiero","Otro"];
+
+function CostosFijosTab({ costosFijos, setCostosFijos }) {
+  const [form, setForm] = useState({ nombre: "", monto: "", categoria: "Servicios" });
+
+  const add = () => {
+    if (!form.nombre || !form.monto) return;
+    setCostosFijos([...costosFijos, { id: uid(), nombre: form.nombre.trim(), monto: Number(form.monto), categoria: form.categoria }]);
+    setForm({ ...form, nombre: "", monto: "" });
+  };
+  const upd = (id, f, v) => setCostosFijos(costosFijos.map(c => c.id !== id ? c : { ...c, [f]: f === "monto" ? Number(v) : v }));
+  const del = id => { if (confirm("¿Eliminar este costo?")) setCostosFijos(costosFijos.filter(c => c.id !== id)); };
+
+  const byCat = CATS_CF.map(cat => ({ cat, items: costosFijos.filter(c => c.categoria === cat) })).filter(g => g.items.length > 0);
+  const total = costosFijos.reduce((s, c) => s + c.monto, 0);
+
+  return (
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+      <h2 style={{ margin: "0 0 20px", color: "#1a2e1a" }}>Costos fijos</h2>
+
+      <div style={{ ...S.card, background: "#1a2e1a", color: "#fff", marginBottom: "20px" }}>
+        <div style={{ fontSize: "11px", opacity: 0.6, marginBottom: "4px" }}>TOTAL MENSUAL</div>
+        <div style={{ fontSize: "28px", fontWeight: "700" }}>{fmt(total)}</div>
+        <div style={{ fontSize: "11px", opacity: 0.5, marginTop: "4px" }}>{costosFijos.length} ítems en {byCat.length} categorías</div>
+      </div>
+
+      <div style={S.card}>
+        <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Agregar costo fijo</div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} style={{...S.inp, flex: "1 1 160px"}} onKeyDown={e => e.key==="Enter" && add()} />
+          <select value={form.categoria} onChange={e => setForm({...form, categoria: e.target.value})} style={S.inp}>
+            {CATS_CF.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <input type="number" placeholder="Monto $" value={form.monto} onChange={e => setForm({...form, monto: e.target.value})} style={{...S.inp, width: "140px"}} />
+          <button onClick={add} style={S.btn()}>+ Agregar</button>
+        </div>
+      </div>
+
+      {byCat.map(({ cat, items }) => {
+        const subtotal = items.reduce((s, c) => s + c.monto, 0);
+        return (
+          <div key={cat} style={S.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <div style={{ fontWeight: "700", fontSize: "13px", color: "#1a7a3a" }}>{cat}</div>
+              <div style={{ fontWeight: "700", fontSize: "13px" }}>{fmt(subtotal)}</div>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr><th style={S.th}>Nombre</th><th style={S.th}>Categoría</th><th style={S.th}>Monto</th><th style={S.th}></th></tr></thead>
+              <tbody>
+                {items.map(c => (
+                  <tr key={c.id}>
+                    <td style={S.td}><input value={c.nombre} onChange={e => upd(c.id,"nombre",e.target.value)} style={{...S.inp, width:"100%"}} /></td>
+                    <td style={S.td}><select value={c.categoria} onChange={e => upd(c.id,"categoria",e.target.value)} style={S.inp}>{CATS_CF.map(x=><option key={x}>{x}</option>)}</select></td>
+                    <td style={S.td}><input type="number" value={c.monto} onChange={e => upd(c.id,"monto",e.target.value)} style={{...S.inp, width:"140px"}} /></td>
+                    <td style={S.td}><button onClick={() => del(c.id)} style={{background:"none",border:"none",color:"#c0392b",cursor:"pointer",fontSize:"16px"}}>×</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+
+      {costosFijos.length === 0 && <div style={{...S.card, color:"#888", textAlign:"center"}}>No hay costos fijos cargados todavía.</div>}
+    </div>
+  );
+}
+
 // ===================== NUEVO ENVÍO =====================
 function NuevoEnvio({ local, insumos, onGuardar }) {
   const [fecha, setFecha] = useState(today());
@@ -760,6 +829,94 @@ function UsuariosTab({ usuarios, setUsuarios }) {
   );
 }
 
+// ===================== STOCK =====================
+function StockTab({ cookInsumos, stockInsumos, setStockInsumos, salsas, produccion }) {
+  const [tabStock, setTabStock] = useState(0); // 0=insumos, 1=recetas
+  const fmtGr = kg => { const gr = Math.round(kg * 1000); return gr >= 1000 ? `${(gr/1000).toFixed(2)} kg` : `${gr} gr`; };
+
+  const setQty = (id, v) => setStockInsumos({ ...stockInsumos, [id]: v === "" ? "" : Number(v) });
+  const byCat = CATS.map(cat => ({ cat, items: cookInsumos.filter(i => i.categoria === cat) })).filter(g => g.items.length > 0);
+
+  const stockRecetas = salsas.map(s => {
+    const producidoKg = (produccion||[]).filter(p => p.salsa_id===s.id && p.tipo!=="despacho").reduce((a,p) => a+p.cantidadKg, 0);
+    const despachado  = (produccion||[]).filter(p => p.salsa_id===s.id && p.tipo==="despacho").reduce((a,p) => a+p.cantidadKg, 0);
+    const actualKg = producidoKg - despachado;
+    const esPU = s.rendTipo === "unidad";
+    const color = producidoKg===0&&despachado===0 ? "#aaa" : actualKg<0 ? "#c0392b" : actualKg<(esPU?2:0.2) ? "#e67e22" : "#1a7a3a";
+    return { ...s, producidoKg, despachado, actualKg, esPU, color };
+  });
+
+  return (
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px" }}>
+      <h2 style={{ margin: "0 0 16px", color: "#1a2e1a" }}>Stock</h2>
+      <div style={{ display: "flex", gap: "4px", marginBottom: "20px" }}>
+        <button style={S.tab(tabStock===0)} onClick={() => setTabStock(0)}>🛒 Insumos</button>
+        <button style={S.tab(tabStock===1)} onClick={() => setTabStock(1)}>🧪 Recetas</button>
+      </div>
+
+      {tabStock === 0 && (
+        <>
+          {byCat.map(({ cat, items }) => (
+            <div key={cat} style={S.card}>
+              <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "10px", color: "#1a7a3a" }}>{cat}</div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead><tr><th style={S.th}>Insumo</th><th style={S.th}>Unidad</th><th style={S.th}>Cantidad en stock</th></tr></thead>
+                <tbody>
+                  {items.map(ins => {
+                    const qty = stockInsumos[ins.id] ?? "";
+                    const hasQty = qty !== "" && Number(qty) > 0;
+                    return (
+                      <tr key={ins.id}>
+                        <td style={S.td}>{ins.nombre}</td>
+                        <td style={{ ...S.td, color: "#888" }}>{ins.unidad}</td>
+                        <td style={S.td}>
+                          <input
+                            type="number" min="0" step="0.01"
+                            value={qty}
+                            onChange={e => setQty(ins.id, e.target.value)}
+                            placeholder="0"
+                            style={{ ...S.inp, width: "120px", color: hasQty ? "#1a7a3a" : "#aaa", fontWeight: hasQty ? "700" : "400" }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          {cookInsumos.length === 0 && <div style={{...S.card, color:"#888", textAlign:"center"}}>No hay insumos cargados. Agregalos en Insumos.</div>}
+        </>
+      )}
+
+      {tabStock === 1 && (
+        <div style={S.card}>
+          <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "12px" }}>Stock de recetas producidas</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead><tr>{["Receta","Producido","Despachado","Stock actual"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <tbody>
+              {stockRecetas.map((s, i) => (
+                <tr key={s.id} style={{ background: i%2===0?"#fafafa":"#fff" }}>
+                  <td style={S.td}>🧪 {s.nombre}</td>
+                  <td style={{ ...S.td, color: s.producidoKg>0?"#1a7a3a":"#bbb", fontWeight:"700" }}>
+                    {s.producidoKg>0 ? (s.esPU ? `${Math.round(s.producidoKg)} u` : fmtGr(s.producidoKg)) : "—"}
+                  </td>
+                  <td style={{ ...S.td, color: s.despachado>0?"#c0392b":"#bbb" }}>
+                    {s.despachado>0 ? (s.esPU ? `${Math.round(s.despachado)} u` : fmtGr(s.despachado)) : "—"}
+                  </td>
+                  <td style={{ ...S.td, fontWeight:"700", color: s.color }}>
+                    {s.producidoKg===0&&s.despachado===0 ? "—" : s.esPU ? `${Math.round(s.actualKg)} u` : fmtGr(s.actualKg)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===================== LOGIN =====================
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -818,12 +975,13 @@ export default function App() {
   useEffect(() => { onFbConnected = setFbOk; }, []);
 
   const [locales,      setLocales]      = usePersisted("ce-locales",      INITIAL_LOCALES);
-  const [insumos,      setInsumos]      = usePersisted("ce-insumos",      []);
   const [allEnvios,    setAllEnvios]    = usePersisted("ce-envios",       {});
   const [usuarios,     setUsuarios]     = usePersisted("ce-users",        []);
   const [cookInsumos,  setCookInsumos]  = usePersisted("ce-cook-insumos", initialCookInsumos);
   const [salsas,       setSalsas]       = usePersisted("ce-salsas",       initialSalsasData);
   const [produccion,   setProduccion]   = usePersisted("ce-produccion",   []);
+  const [costosFijos,  setCostosFijos]  = usePersisted("ce-costos-fijos", []);
+  const [stockInsumos, setStockInsumos] = usePersisted("ce-stock-ins",    {});
 
   const [selLocal, setSelLocal] = useState(null);
   const [tabLocal, setTabLocal] = useState(0);
@@ -836,12 +994,13 @@ export default function App() {
   const setEnvios = (id, envs) => setAllEnvios({...allEnvios, [id]: envs});
 
   const headerTitle =
-    selLocal==="insumos"      ? "🛒 Insumos y precios"
-    : selLocal==="locales"    ? "🏪 Gestión de locales"
+    selLocal==="locales"      ? "🏪 Gestión de locales"
     : selLocal==="usuarios"   ? "👥 Usuarios"
-    : selLocal==="recetas-ins"? "🥦 Insumos de recetas"
+    : selLocal==="insumos"    ? "🛒 Insumos"
     : selLocal==="recetas"    ? "🧪 Recetas"
     : selLocal==="produccion" ? "🏭 Producción"
+    : selLocal==="costos"     ? "💰 Costos fijos"
+    : selLocal==="stock"      ? "📊 Stock"
     : localActual             ? localActual.nombre
     : "← Seleccioná un local para comenzar";
 
@@ -869,10 +1028,7 @@ export default function App() {
           </button>
         ))}
 
-        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>ENVÍOS</div>
-        <button style={S.localBtn(selLocal==="insumos","#27ae60")} onClick={()=>setSelLocal("insumos")}>
-          <span>🛒</span> Insumos
-        </button>
+        <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>GESTIÓN</div>
         <button style={S.localBtn(selLocal==="locales","#7d3c98")} onClick={()=>setSelLocal("locales")}>
           <span>🏪</span> Locales
         </button>
@@ -883,14 +1039,20 @@ export default function App() {
         )}
 
         <div style={{padding:"14px 18px 6px",fontSize:"10px",color:"#557",fontWeight:"700",letterSpacing:"1px",marginTop:"6px"}}>COCINA</div>
-        <button style={S.localBtn(selLocal==="recetas-ins","#117a65")} onClick={()=>setSelLocal("recetas-ins")}>
-          <span>🥦</span> Insumos recetas
+        <button style={S.localBtn(selLocal==="insumos","#117a65")} onClick={()=>setSelLocal("insumos")}>
+          <span>🛒</span> Insumos
         </button>
         <button style={S.localBtn(selLocal==="recetas","#1a7a3a")} onClick={()=>setSelLocal("recetas")}>
           <span>🧪</span> Recetas
         </button>
         <button style={S.localBtn(selLocal==="produccion","#e67e22")} onClick={()=>setSelLocal("produccion")}>
           <span>🏭</span> Producción
+        </button>
+        <button style={S.localBtn(selLocal==="stock","#2471a3")} onClick={()=>setSelLocal("stock")}>
+          <span>📊</span> Stock
+        </button>
+        <button style={S.localBtn(selLocal==="costos","#c0392b")} onClick={()=>setSelLocal("costos")}>
+          <span>💰</span> Costos fijos
         </button>
 
         <div style={{marginTop:"auto",borderTop:"1px solid #ffffff10",padding:"12px 14px"}}>
@@ -921,13 +1083,14 @@ export default function App() {
             <div style={{fontSize:"16px"}}>Seleccioná un local del panel izquierdo</div>
           </div>
         )}
-        {selLocal==="insumos"     && <InsumosTab insumos={insumos} setInsumos={setInsumos} />}
         {selLocal==="locales"     && <LocalesTab locales={locales} setLocales={setLocales} />}
         {selLocal==="usuarios"    && currentUser?.isAdmin && <UsuariosTab usuarios={usuarios} setUsuarios={setUsuarios} />}
-        {selLocal==="recetas-ins" && <InsumosTab insumos={cookInsumos} setInsumos={setCookInsumos} />}
+        {selLocal==="insumos"     && <InsumosTab insumos={cookInsumos} setInsumos={setCookInsumos} />}
         {selLocal==="recetas"     && <SalsasTab salsas={salsas} setSalsas={setSalsas} cookInsumos={cookInsumos} />}
         {selLocal==="produccion"  && <ProduccionTab salsas={salsas} cookInsumos={cookInsumos} produccion={produccion} setProduccion={setProduccion} locales={locales} />}
-        {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={insumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
+        {selLocal==="stock"       && <StockTab cookInsumos={cookInsumos} stockInsumos={stockInsumos} setStockInsumos={setStockInsumos} salsas={salsas} produccion={produccion} />}
+        {selLocal==="costos"      && <CostosFijosTab costosFijos={costosFijos} setCostosFijos={setCostosFijos} />}
+        {localActual && tabLocal===0 && <NuevoEnvio local={localActual} insumos={cookInsumos} onGuardar={env=>{setEnvios(localActual.id,[env,...getEnvios(localActual.id)]);setTabLocal(1);}} />}
         {localActual && tabLocal===1 && <Historial local={localActual} envios={getEnvios(localActual.id)} setEnvios={envs=>setEnvios(localActual.id,envs)} />}
       </div>
     </div>
